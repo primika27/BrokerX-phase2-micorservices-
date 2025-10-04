@@ -1,0 +1,49 @@
+# =========================================
+#  BROKERX MICROservices - Root .gitignore
+# =========================================
+
+# Ignore environment files
+.env
+*.env
+**/*.env
+
+# Build artifacts
+target/
+out/
+build/
+**/target/
+**/build/
+
+# IDE configs
+.idea/
+.vscode/
+*.iml
+
+# OS junk files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Caches
+.mvn/
+.gradle/
+.cache/
+.tmp/
+
+# Databases and data folders
+*.mv.db
+*.trace.db
+data/
+**/data/
+
+# Test reports
+**/surefire-reports/
+**/test-output/
+
+# Docker overrides (optional)
+docker-compose.override.yml
+*.local.yml
