@@ -1,11 +1,24 @@
 package com.broker.clientService.Application;
-
-import org.springframework.mail.javamail.MimeMessageHelper;
-
+import com.broker.clientservice.domain.Client;
+import com.broker.clientservice.infrastructure.repository.ClientRepository;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
+@Service
 public class ClientService {
     
+
+    @Autowired
+    private ClientRepository clientRepository;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
 
 public Client register(String name, String email, String motDePasse) {
         if (clientRepository.findByEmail(email) != null) {

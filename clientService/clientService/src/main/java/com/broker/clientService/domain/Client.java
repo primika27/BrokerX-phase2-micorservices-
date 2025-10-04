@@ -1,25 +1,30 @@
 package com.broker.clientService.domain;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+
 @Entity
 public class Client {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int clientId;
 
-    int clientId;
+
+
+    private String name;
+    private String email;
+
+    private int verificationToken;
+    private String statut; //(PENDING, ACTIVE, REJECTED).
 
     public Client() {
     }
-
-    String name;
-    String email;
-    String motDePasse;
-    int verificationToken;
-    String statut; //(PENDING, ACTIVE, REJECTED).
-
-    public Client(int clientId, String name, String email, String motDePasse, int verificationToken, String statut) {
+    public Client(int clientId, String name, String email, int verificationToken, String statut) {
         this.clientId = clientId;
         this.name = name;
         this.email = email;
-        this.motDePasse = motDePasse;
         this.verificationToken = verificationToken;
         this.statut = statut;
     }
