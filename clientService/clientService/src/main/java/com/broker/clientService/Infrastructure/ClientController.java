@@ -1,11 +1,10 @@
 
+package com.broker.clientService.Infrastructure;
 
-package com.brokerx.brokerx.Infrastructure;
-
-
-import com.brokerx.brokerx.Application.ClientService;
-import com.brokerx.brokerx.domain.Client;
-import org.springframework.web.servlet.view.RedirectView;
+import com.broker.clientService.Application.ClientService;
+import com.broker.clientService.domain.Client;
+import com.broker.clientService.Infrastructure.Repo.ClientRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,11 +14,11 @@ import org.springframework.web.bind.annotation.*;
 public class ClientController {
 
 	private final ClientService clientService;
+	
+	@Autowired
+	private ClientRepository clientRepository;
 
-    private final com.brokerx.brokerx.Infrastructure.Repositories.ClientRepository clientRepository;
-
-    public ClientController(com.brokerx.brokerx.Infrastructure.Repositories.ClientRepository clientRepository, ClientService clientService) {
-        this.clientRepository = clientRepository;
+    public ClientController(ClientService clientService) {
         this.clientService = clientService;
     }
 
@@ -54,16 +53,6 @@ public class ClientController {
         }
     }
 
-	// // Verification endpoint (simulated)
-	// @GetMapping("/verify")
-    // public RedirectView verify(@RequestParam int token) {
-    //     boolean result = clientService.verifyByToken(token);
-    //     if (result) {
-    //         return new RedirectView("/verification-success.html");
-    //     } else {
-    //         return new RedirectView("/verification-failed.html");
-    //     }
-    // }
     
 }
 

@@ -1,4 +1,4 @@
-package com.brokerx.AuthentificationService.domain;
+package com.broker.authService.domain;
 
 import jakarta.persistence.*;
 

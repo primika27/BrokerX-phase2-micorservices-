@@ -1,23 +1,25 @@
 package com.broker.authService.Application;
 import jakarta.mail.internet.MimeMessage;
 
+import java.util.Optional;
 import java.util.Random;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
+import com.broker.authService.infrastructure.repo.UserCredentialRepository;
 import com.broker.authService.domain.UserCredential;
 
-
+@Service
 public class AuthentificationService {
 
 
  private final Random random = new Random();
 
-    private final java.util.Map<Integer, String> otpStore = new java.util.HashMap<>();
+    private final java.util.Map<Long, String> otpStore = new java.util.HashMap<>();
 
 
     @Autowired
@@ -25,12 +27,6 @@ public class AuthentificationService {
 
     @Autowired
     private UserCredentialRepository repository;
-
-    @PostMapping("/register-credentials")
-    public void registerCredentials(@RequestParam String email, @RequestParam String password) {
-        authService.register(email, password); // This hashes and saves password
-    }
-
 
     public String loginWithMfa(String identifiant, String motDePasse) {
         Optional<UserCredential> userOpt = repository.findByEmail(identifiant);
@@ -44,7 +40,7 @@ public class AuthentificationService {
             return "ACCOUNT_INACTIVE";
         }
 
-        if (!user.getPasswordHash().equals(password)) { //later replace with passwordEncoder.matches
+        if (!user.getPasswordHash().equals(motDePasse)) { //later replace with passwordEncoder.matches
             return "INVALID_PASSWORD";
         }
 
@@ -76,13 +72,7 @@ public class AuthentificationService {
     }
 
     public void logout(String email) {
-        Client client = clientRepository.findByEmail(email);
-        if (client != null) {
-            otpStore.remove(client.getClientId());
-        }
-    }
-    public void logout(int clientId) {
-    repository.findByEmail(email).ifPresent(u -> otpStore.remove(u.getId()));
+        repository.findByEmail(email).ifPresent(u -> otpStore.remove(u.getId()));
     }
 
     public boolean validateOtp(String email, String otp) {

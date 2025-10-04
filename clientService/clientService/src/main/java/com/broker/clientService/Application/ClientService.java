@@ -1,6 +1,7 @@
 package com.broker.clientService.Application;
-import com.broker.clientservice.domain.Client;
-import com.broker.clientservice.infrastructure.repository.ClientRepository;
+import com.broker.clientService.Infrastructure.client.AuthClient;
+import com.broker.clientService.domain.Client;
+import com.broker.clientService.Infrastructure.Repo.ClientRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -19,20 +20,24 @@ public class ClientService {
     @Autowired
     private JavaMailSender mailSender;
 
+    @Autowired
+    private AuthClient authClient;
+
 
 public Client register(String name, String email, String motDePasse) {
-        if (clientRepository.findByEmail(email) != null) {
-            throw new IllegalArgumentException("Email already used");
-        }
-        int verificationToken = UUID.randomUUID().hashCode();
-        Client client = new Client(0, name, email, motDePasse, verificationToken, "PENDING");
-        client = clientRepository.save(client);
-        sendVerificationEmail(client); 
-        return client;
+    if (clientRepository.findByEmail(email) != null) {
+        throw new IllegalArgumentException("Email already used");
     }
 
-    public Client findByEmail(String email) {
-        return clientRepository.findByEmail(email);
+    // 1. Tell Auth Service to register credentials
+    authClient.registerCredentials(email, motDePasse);
+
+    // 2. Create the client profile
+    int verificationToken = UUID.randomUUID().hashCode();
+    Client client = new Client(0, name, email, verificationToken, "PENDING");
+    client = clientRepository.save(client);
+    sendVerificationEmail(client);
+    return client;
     }
 
     public void sendVerificationEmail(Client client) {
@@ -68,10 +73,11 @@ public Client register(String name, String email, String motDePasse) {
         }
         client.setStatut("ACTIVE");
 
-            if (client.getPortefeuille() == null) {
-                Portefeuille portefeuille = portefeuilleService.createPortefeuille(client);
-                client.setPortefeuille(portefeuille);
-            }
+        // TODO: Implement portefeuille functionality
+        // if (client.getPortefeuille() == null) {
+        //     Portefeuille portefeuille = portefeuilleService.createPortefeuille(client);
+        //     client.setPortefeuille(portefeuille);
+        // }
 
         clientRepository.save(client);
         System.out.println("Client " + client.getEmail() + " vérifié avec succès !");

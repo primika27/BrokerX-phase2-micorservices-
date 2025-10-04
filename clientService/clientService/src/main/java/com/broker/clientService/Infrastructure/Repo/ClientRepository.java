@@ -1,6 +1,6 @@
-package com.brokerx.clientservice.infrastructure.repository;
+package com.broker.clientService.Infrastructure.Repo;
 
-import com.broker.clientservice.domain.Client;
+import com.broker.clientService.domain.Client;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClientRepository extends JpaRepository<Client, Integer> {

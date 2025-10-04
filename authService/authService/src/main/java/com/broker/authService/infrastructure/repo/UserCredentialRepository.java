@@ -1,6 +1,6 @@
-package com.brokerx.authservice.infrastructure.repository;
+package com.broker.authService.infrastructure.repo;
 
-import com.brokerx.authservice.domain.UserCredential;
+import com.broker.authService.domain.UserCredential;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -10,5 +10,5 @@ public interface UserCredentialRepository extends JpaRepository<UserCredential, 
 
 
 
-    
+
 }
