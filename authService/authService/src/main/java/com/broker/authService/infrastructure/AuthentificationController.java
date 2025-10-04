@@ -6,8 +6,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.broker.authService.Application.AuthentificationService;
 
-
-
 public class AuthentificationController {
     
     private final AuthentificationService authentificationService;
@@ -33,15 +31,15 @@ public class AuthentificationController {
         return "LOGOUT_SUCCESS";
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
-        try {
-            String token = authentificationService.login(email, password);
-            return ResponseEntity.ok(Map.of("token", token));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-        }
-    }
+    // @PostMapping("/login")
+    // public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
+    //     try {
+    //         String token = authentificationService.login(email, password);
+    //         return ResponseEntity.ok(Map.of("token", token));
+    //     } catch (Exception e) {
+    //         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+    //     }
+    // }
 
 
 }
