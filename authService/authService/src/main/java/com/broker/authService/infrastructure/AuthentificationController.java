@@ -31,15 +31,5 @@ public class AuthentificationController {
         return "LOGOUT_SUCCESS";
     }
 
-    // @PostMapping("/login")
-    // public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
-    //     try {
-    //         String token = authentificationService.login(email, password);
-    //         return ResponseEntity.ok(Map.of("token", token));
-    //     } catch (Exception e) {
-    //         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-    //     }
-    // }
-
 
 }
