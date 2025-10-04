@@ -18,7 +18,7 @@ import com.broker.authService.domain.UserCredential;
 public class AuthentificationService {
 
 
- private final Random random = new Random();
+    private final Random random = new Random();
 
     private final java.util.Map<Long, String> otpStore = new java.util.HashMap<>();
 
