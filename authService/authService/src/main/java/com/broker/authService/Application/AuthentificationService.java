@@ -3,10 +3,11 @@ import jakarta.mail.internet.MimeMessage;
 
 import java.util.Optional;
 import java.util.Random;
-
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,6 +28,24 @@ public class AuthentificationService {
 
     @Autowired
     private UserCredentialRepository repository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
+    public String login(String email, String password) {
+    UserCredential user = repository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+    if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+        throw new RuntimeException("Invalid credentials");
+    }
+
+    // Generate JWT token
+    return jwtService.generateToken(Map.of("role", "CLIENT"), user.getEmail());
+}
 
     public String loginWithMfa(String identifiant, String motDePasse) {
         Optional<UserCredential> userOpt = repository.findByEmail(identifiant);

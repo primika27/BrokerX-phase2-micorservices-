@@ -1,5 +1,6 @@
 package com.broker.authService.infrastructure;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -31,5 +32,16 @@ public class AuthentificationController {
         authentificationService.logout(email);
         return "LOGOUT_SUCCESS";
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
+        try {
+            String token = authentificationService.login(email, password);
+            return ResponseEntity.ok(Map.of("token", token));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
+    }
+
 
 }
