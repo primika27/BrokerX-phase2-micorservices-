@@ -30,7 +30,7 @@ public Client register(String name, String email, String motDePasse) {
     }
 
     // 1. Tell Auth Service to register credentials
-    authClient.registerCredentials(email, motDePasse);
+    authClient.createUserCredential(new UserCredentialRequest(email, motDePasse));
 
     // 2. Create the client profile
     int verificationToken = UUID.randomUUID().hashCode();

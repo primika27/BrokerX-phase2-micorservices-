@@ -42,10 +42,23 @@ public class AuthentificationService {
     if (!passwordEncoder.matches(password, user.getPasswordHash())) {
         throw new RuntimeException("Invalid credentials");
     }
+    
 
     // Generate JWT token
     return jwtService.generateToken(Map.of("role", "CLIENT"), user.getEmail());
-}
+    }
+
+    public void register(String email, String rawPassword) {
+        if (repository.findByEmail(email).isPresent()) {
+            throw new RuntimeException("Email already registered");
+        }
+
+        String hashedPassword = passwordEncoder.encode(rawPassword);
+        UserCredential user = new UserCredential(email, hashedPassword, "PENDING");
+        repository.save(user);
+    }
+
+
 
     public String loginWithMfa(String identifiant, String motDePasse) {
         Optional<UserCredential> userOpt = repository.findByEmail(identifiant);
@@ -59,7 +72,7 @@ public class AuthentificationService {
             return "ACCOUNT_INACTIVE";
         }
 
-        if (!user.getPasswordHash().equals(motDePasse)) { //later replace with passwordEncoder.matches
+        if (!passwordEncoder.matches(motDePasse, user.getPasswordHash())) {
             return "INVALID_PASSWORD";
         }
 
