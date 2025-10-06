@@ -1,6 +1,7 @@
 package com.broker.authService.infrastructure;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,15 +17,13 @@ public class AuthentificationController {
     private final AuthentificationService authentificationService;
 
     public AuthentificationController(AuthentificationService authentificationService) {
-        this
-        
-        .authentificationService = authentificationService;
+        this.authentificationService = authentificationService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody UserCredentialRequest request) {
-    authentificationService.register(request.getEmail(), request.getPassword());
-    return ResponseEntity.ok("User credentials created successfully.");
+        authentificationService.register(request.getEmail(), request.getPassword());
+        return ResponseEntity.ok("User credentials created successfully. Please check your email to verify your account.");
     }
 
 
@@ -45,5 +44,15 @@ public class AuthentificationController {
         return "LOGOUT_SUCCESS";
     }
 
+    // Email verification endpoint
+    @GetMapping("/verify")
+    public ResponseEntity<String> verifyAccount(@RequestParam String email) {
+        boolean verified = authentificationService.verifyAccount(email);
+        if (verified) {
+            return ResponseEntity.ok("Account verified successfully! You can now login.");
+        } else {
+            return ResponseEntity.badRequest().body("Verification failed. Invalid or already verified account.");
+        }
+    }
 
 }

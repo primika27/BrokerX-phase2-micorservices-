@@ -56,6 +56,9 @@ public class AuthentificationService {
         String hashedPassword = passwordEncoder.encode(rawPassword);
         UserCredential user = new UserCredential(email, hashedPassword, "PENDING");
         repository.save(user);
+        
+        // Send verification email
+        sendVerificationEmail(user);
     }
 
 
@@ -83,7 +86,6 @@ public class AuthentificationService {
         return "MFA_REQUIRED";
     }
 
-
     private void sendOtp(String to, String otp) {
         try {
             String subject = "BrokerX – Votre code de vérification";
@@ -103,6 +105,26 @@ public class AuthentificationService {
         }
     }
 
+    private void sendVerificationEmail(UserCredential user) {
+        try {
+            String subject = "BrokerX – Vérification de votre compte";
+            String verificationUrl = "http://localhost:8080/api/auth/verify?email=" + user.getEmail();
+            String html = "<p>Cliquez ici pour vérifier votre compte : <a href=\"" + verificationUrl + "\">Vérifier mon compte</a></p>";
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom("noreply@brokerx.com");
+            helper.setTo(user.getEmail());
+            helper.setSubject(subject);
+            helper.setText(html, true);
+            mailSender.send(message);
+
+            System.out.println("Verification email sent to: " + user.getEmail());
+        } catch (Exception e) {
+            System.out.println("Failed to send verification email to: " + user.getEmail() + " - " + e.getMessage());
+        }
+    }
+
     public void logout(String email) {
         repository.findByEmail(email).ifPresent(u -> otpStore.remove(u.getId()));
     }
@@ -119,6 +141,21 @@ public class AuthentificationService {
         return valid;
     }
 
+    public boolean verifyAccount(String email) {
+        Optional<UserCredential> userOpt = repository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return false;
+        }
 
-    
+        UserCredential user = userOpt.get();
+        if (!"PENDING".equals(user.getStatus())) {
+            return false; // Already verified or rejected
+        }
+
+        user.setStatus("ACTIVE");
+        repository.save(user);
+        System.out.println("Account verified for: " + email);
+        return true;
+    }
+
 }

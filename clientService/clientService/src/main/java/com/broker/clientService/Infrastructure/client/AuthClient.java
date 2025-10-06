@@ -11,4 +11,5 @@ public interface AuthClient {
 
     @PostMapping("/register")
     void createUserCredential(@RequestBody UserCredentialRequest request);
+    
 }
