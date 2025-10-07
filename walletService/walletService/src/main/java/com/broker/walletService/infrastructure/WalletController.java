@@ -10,15 +10,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
 
 import com.broker.walletService.Application.WalletService;
-import com.broker.walletService.domain.Wallet;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @RestController
 @RequestMapping("/api/wallet")
 public class WalletController {
 
-    @Autowired
-    private WalletService walletService;
+    private final WalletService walletService;
 
     public WalletController(WalletService walletService) {
         this.walletService = walletService;
