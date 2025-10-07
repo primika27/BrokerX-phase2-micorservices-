@@ -10,7 +10,8 @@ import java.security.Key;
 public class JwtService {
     
 
-     private static final String SECRET_KEY = "YOUR_SECRET_KEY_256_BITS_HERE_SAME_AS_AUTH_SERVICE";
+    // Same Base64 encoded 256-bit secret key as AuthService for JWT validation
+    private static final String SECRET_KEY = "YnJva2VyWFNlY3JldEtleUZvckpXVFNpZ25pbmdTdXBlckxvbmdTdHJpbmdUaGF0SXNTZWN1cmU=";
 
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);

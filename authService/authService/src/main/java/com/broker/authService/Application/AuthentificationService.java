@@ -140,6 +140,22 @@ public class AuthentificationService {
         return valid;
     }
 
+    public String validateOtpAndGenerateToken(String email, String otp) {
+        Optional<UserCredential> userOpt = repository.findByEmail(email);
+        if (userOpt.isEmpty()) return null;
+
+        UserCredential user = userOpt.get();
+        String expectedOtp = otpStore.get(user.getId());
+        boolean valid = otp != null && otp.equals(expectedOtp);
+
+        if (valid) {
+            otpStore.remove(user.getId());
+            // Generate JWT token after successful OTP validation
+            return jwtService.generateToken(Map.of("role", "CLIENT"), user.getEmail());
+        }
+        return null;
+    }
+
     public boolean verifyAccount(String email) {
         Optional<UserCredential> userOpt = repository.findByEmail(email);
         if (userOpt.isEmpty()) {

@@ -13,7 +13,8 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
-    private static final String SECRET_KEY = "YOUR_SECRET_KEY_256_BITS_HERE_CHANGE_THIS";
+    // Base64 encoded 256-bit secret key for JWT signing
+    private static final String SECRET_KEY = "YnJva2VyWFNlY3JldEtleUZvckpXVFNpZ25pbmdTdXBlckxvbmdTdHJpbmdUaGF0SXNTZWN1cmU=";
 
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);

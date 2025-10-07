@@ -25,6 +25,16 @@ public class AuthentificationController {
         return ResponseEntity.ok("AuthService is working!");
     }
 
+    @PostMapping("/simple-login") // pr test without mfa
+    public ResponseEntity<String> simpleLogin(@RequestBody UserCredentialRequest request) {
+        try {
+            String result = authentificationService.login(request.getEmail(), request.getPassword());
+            return ResponseEntity.ok("Login successful. Token: " + result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Login failed: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody UserCredentialRequest request) {
         authentificationService.register(request.getEmail(), request.getPassword());
@@ -33,13 +43,23 @@ public class AuthentificationController {
 
 
     @PostMapping("/login")
-    public String login(@RequestParam String email, @RequestParam String motDePasse) {
-        return authentificationService.loginWithMfa(email, motDePasse);
+    public ResponseEntity<String> login(@RequestBody UserCredentialRequest request) {
+        try {
+            String result = authentificationService.loginWithMfa(request.getEmail(), request.getPassword());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Login failed: " + e.getMessage());
+        }
     }
 
     @PostMapping("/verify-otp")
-    public String verifyOtp(@RequestParam String email, @RequestParam String otp) {
-        return authentificationService.validateOtp(email, otp) ? "LOGIN_SUCCESS" : "INVALID_OTP";
+    public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+        String token = authentificationService.validateOtpAndGenerateToken(email, otp);
+        if (token != null) {
+            return ResponseEntity.ok("LOGIN_SUCCESS. Token: " + token);
+        } else {
+            return ResponseEntity.badRequest().body("INVALID_OTP");
+        }
     }
 
     // Logout endpoint
