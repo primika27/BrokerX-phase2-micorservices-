@@ -38,13 +38,15 @@ public class JwtAuthFilter implements GatewayFilter {
             return exchange.getResponse().setComplete();
         }
 
-        // Optionally, add email info as a header for downstream services
+        // Add email info as a header for downstream services
         String email = jwtService.extractEmail(token);
-        exchange.getRequest().mutate()
-                .header("X-Authenticated-User", email)
+        ServerWebExchange modifiedExchange = exchange.mutate()
+                .request(exchange.getRequest().mutate()
+                        .header("X-Authenticated-User", email)
+                        .build())
                 .build();
 
-        return chain.filter(exchange);
+        return chain.filter(modifiedExchange);
     }
 
 

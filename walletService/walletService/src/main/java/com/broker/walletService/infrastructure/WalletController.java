@@ -1,80 +1,71 @@
 
 package com.broker.walletService.infrastructure;
-import org.springframework.stereotype.Controller;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import com.broker.walletService.infrastructure.repo.*;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+
 import com.broker.walletService.Application.WalletService;
 import com.broker.walletService.domain.Wallet;
 import org.springframework.beans.factory.annotation.Autowired;
 
-@Controller
+@RestController
+@RequestMapping("/api/wallet")
 public class WalletController {
 
     @Autowired
-    private final WalletService walletService;
-
-    @Autowired
-    private WalletRepository walletRepository;
+    private WalletService walletService;
 
     public WalletController(WalletService walletService) {
         this.walletService = walletService;
     }
 
-
-    // @GetMapping("/deposit")
-    // public String showDepositPage(Model model, Principal principal) {
-    //     try {
-    //         if (client != null) {
-    //             Portefeuille portefeuille = portefeuilleService.getPortefeuilleByClientId(client.getClientId());
-    //             if (portefeuille != null) {
-    //                 model.addAttribute("currentBalance", portefeuille.getSolde());
-    //             } else {
-    //                 model.addAttribute("currentBalance", 0.0);
-    //             }
-    //         }
-    //         model.addAttribute("maxDeposit", MAX_DEPOSIT_LIMIT);
-    //     } catch (Exception e) {
-    //         model.addAttribute("currentBalance", 0.0);
-    //         model.addAttribute("maxDeposit", MAX_DEPOSIT_LIMIT);
-    //     }
-    //     return "deposit";
-    // }
-
-    @PostMapping("/api/wallet/deposit")
-    @ResponseBody
-    public String deposit(@RequestParam double amount) {
-        if (amount <= 0) {
-            return "Deposit amount must be positive.";
+    @PostMapping("/deposit")
+    public ResponseEntity<String> deposit(
+            @RequestHeader(value = "X-Authenticated-User", required = true) String ownerEmail,
+            @RequestParam Double amount) {
+        
+        if (ownerEmail == null || ownerEmail.isEmpty()) {
+            return ResponseEntity.badRequest().body("Request must go through Gateway - Missing authentication header");
         }
+        
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body("Deposit amount must be positive.");
+        }
+        
         try {
-            // Assuming you have a way to get the authenticated user's email
-            String ownerEmail = walletRepository.findByOwnerEmail();
             boolean success = walletService.deposit(ownerEmail, amount);
             if (success) {
-                return "Deposit of " + amount + "$ successful.";
+                return ResponseEntity.ok("Deposit of " + amount + "$ successful.");
             } else {
-                return "Deposit failed. Please try again.";
+                return ResponseEntity.badRequest().body("Deposit failed. Please try again.");
             }
         } catch (Exception e) {
-            return "An error occurred: " + e.getMessage();
+            return ResponseEntity.internalServerError().body("An error occurred: " + e.getMessage());
         }
     }
 
-    @GetMapping("/api/wallet/balance")
-    @ResponseBody
-    public Double getBalance(Principal principal) {
+    @GetMapping("/balance")
+    public ResponseEntity<Double> getBalance(@RequestHeader(value = "X-Authenticated-User", required = true) String ownerEmail) {
         try {
-            Wallet wallet = walletService.getWalletByEmail(principal.getName());
-            if (wallet != null) {
-                return wallet.getBalance();
-            }
-            return 0.0;
+            Double balance = walletService.getBalance(ownerEmail);
+            return ResponseEntity.ok(balance);
         } catch (Exception e) {
-            return 0.0;
+            return ResponseEntity.internalServerError().body(0.0);
         }
     }
 
+    @PostMapping("/create")
+    public ResponseEntity<String> createWallet(@RequestHeader("X-Authenticated-User") String ownerEmail) {
+        try {
+            walletService.createWallet(ownerEmail);
+            return ResponseEntity.ok("Wallet created successfully for " + ownerEmail);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to create wallet: " + e.getMessage());
+        }
+    }
 }
