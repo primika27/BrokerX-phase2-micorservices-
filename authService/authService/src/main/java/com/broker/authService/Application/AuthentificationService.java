@@ -9,10 +9,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import com.broker.authService.infrastructure.repo.UserCredentialRepository;
 import com.broker.authService.domain.UserCredential;
+import com.broker.authService.Application.JwtService;
 
 @Service
 public class AuthentificationService {
