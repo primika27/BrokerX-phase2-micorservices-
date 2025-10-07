@@ -18,19 +18,25 @@ public class GatewayConfig {
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
-            // Authentification service routes
+            // Authentification service routes (with JWT filter that handles public endpoints)
             .route("auth_service", r -> r.path("/api/auth/**")
-                .uri("http://localhost:8081")) // No JWT filter on login/register
+                .filters(f -> f.filter(jwtAuthFilter))
+                .uri("http://localhost:8081"))
 
             // Client service routes
             .route("client_service", r -> r.path("/api/clients/**")
                 .filters(f -> f.filter(jwtAuthFilter))
                 .uri("http://localhost:8082"))
 
-            // Wallet service example
+            // Wallet service routes
             .route("wallet_service", r -> r.path("/api/wallet/**")
                 .filters(f -> f.filter(jwtAuthFilter))
                 .uri("http://localhost:8083"))
+
+            // Order service routes
+            .route("order_service", r -> r.path("/api/orders/**")
+                .filters(f -> f.filter(jwtAuthFilter))
+                .uri("http://localhost:8084"))
 
             .build();
     }

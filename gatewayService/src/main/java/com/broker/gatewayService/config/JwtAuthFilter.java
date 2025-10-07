@@ -21,8 +21,8 @@ public class JwtAuthFilter implements GatewayFilter {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        // Allow public endpoints (login, register)
-        if (path.contains("/api/auth/login") || path.contains("/api/clients/register")) {
+        // Allow public endpoints (all auth endpoints should be public)
+        if (path.startsWith("/api/auth/")) {
             return chain.filter(exchange);
         }
 

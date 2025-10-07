@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.broker.authService.infrastructure.dto.UserCredentialRequest;
+import com.broker.authService.infrastructure.dto.OtpVerificationRequest;
 import com.broker.authService.Application.AuthentificationService;
 
 @RestController
@@ -53,8 +54,8 @@ public class AuthentificationController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
-        String token = authentificationService.validateOtp(email, otp);
+    public ResponseEntity<String> verifyOtp(@RequestBody OtpVerificationRequest request) {
+        String token = authentificationService.validateOtp(request.getEmail(), request.getOtp());
         if (token != null) {
             return ResponseEntity.ok("LOGIN_SUCCESS. Token: " + token);
         } else {

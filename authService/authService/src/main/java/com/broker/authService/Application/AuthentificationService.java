@@ -81,6 +81,7 @@ public class AuthentificationService {
         // MFA
         String otp = String.format("%06d", random.nextInt(1_000_000));
         otpStore.put(user.getId(), otp);
+        System.out.println("DEBUG - otp: " + otp);
         sendOtp(user.getEmail(), otp);
         return "MFA_REQUIRED";
     }

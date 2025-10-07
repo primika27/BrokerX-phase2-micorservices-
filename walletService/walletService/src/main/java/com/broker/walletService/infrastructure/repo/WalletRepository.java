@@ -4,6 +4,8 @@ import org.springframework.stereotype.Repository;
 import com.broker.walletService.domain.Wallet;
 
 @Repository
-public interface WalletRepository extends JpaRepository<Wallet, Integer> {
-
+public interface WalletRepository extends JpaRepository<Wallet, Long> {
+    
+    Wallet findByOwnerEmail(String ownerEmail);
+    
 }

@@ -5,8 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-
+import com.broker.walletService.infrastructure.repo.*;
 import com.broker.walletService.Application.WalletService;
+import com.broker.walletService.domain.Wallet;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Controller
@@ -15,12 +16,15 @@ public class WalletController {
     @Autowired
     private final WalletService walletService;
 
+    @Autowired
+    private WalletRepository walletRepository;
+
     public WalletController(WalletService walletService) {
         this.walletService = walletService;
     }
 
 
-    //     @GetMapping("/deposit")
+    // @GetMapping("/deposit")
     // public String showDepositPage(Model model, Principal principal) {
     //     try {
     //         if (client != null) {
@@ -39,64 +43,38 @@ public class WalletController {
     //     return "deposit";
     // }
 
-    
-    // @PostMapping("/api/portefeuille/deposit")  
-    // @ResponseBody
-    // public String deposit(@RequestParam double amount, Principal principal) {
-    //     try {
-    //         if (amount <= 0) {
-    //             return "ERROR: Le montant doit être positif";
-    //         }
+    @PostMapping("/api/wallet/deposit")
+    @ResponseBody
+    public String deposit(@RequestParam double amount) {
+        if (amount <= 0) {
+            return "Deposit amount must be positive.";
+        }
+        try {
+            // Assuming you have a way to get the authenticated user's email
+            String ownerEmail = walletRepository.findByOwnerEmail();
+            boolean success = walletService.deposit(ownerEmail, amount);
+            if (success) {
+                return "Deposit of " + amount + "$ successful.";
+            } else {
+                return "Deposit failed. Please try again.";
+            }
+        } catch (Exception e) {
+            return "An error occurred: " + e.getMessage();
+        }
+    }
 
-    //         if (amount > MAX_DEPOSIT_LIMIT) {
-    //             return "ERROR: Dépôt refusé - Limite anti-fraude dépassée (max: " + 
-    //                    String.format("%.2f", MAX_DEPOSIT_LIMIT) + "€)";
-    //         }
-
-    //         Client client = clientService.findByEmail(principal.getName());
-    //         if (client == null) {
-    //             return "ERROR: Client non trouvé";
-    //         }
-
-    //         Portefeuille portefeuille = portefeuilleService.getPortefeuilleByClientId(client.getClientId());
-    //         if (portefeuille != null && (portefeuille.getSolde() + amount) > MAX_DEPOSIT_LIMIT) {
-    //             return "ERROR: Dépôt refusé - Le solde total dépasserait la limite de " + 
-    //                    String.format("%.2f", MAX_DEPOSIT_LIMIT) + "€";
-    //         }
-
-    //         boolean success = portefeuilleService.deposerFonds(client.getClientId(), amount);
-            
-    //         if (success) {
-    //             // Réponse texte simple que le front sait déjà gérer
-    //             return "SUCCESS: Dépôt de " + String.format("%.2f", amount) + "€ effectué avec succès";
-    //         } else {
-    //             return "ERROR: Échec du dépôt";
-    //         }
-            
-    //     } catch (Exception e) {
-    //         return "ERROR: " + e.getMessage();
-    //     }
-    // }
-
-    // @GetMapping("/api/portefeuille/balance")
-    // @ResponseBody
-    // public Double getBalance(Principal principal) {
-    //     try {
-    //         Client client = clientService.findByEmail(principal.getName());
-    //         if (client == null) {
-    //             return 0.0;
-    //         }
-    //         Portefeuille portefeuille = portefeuilleService.getPortefeuilleByClientId(client.getClientId());
-    //         if (portefeuille != null) {
-    //             return portefeuille.getSolde();
-    //         }
-    //         return 0.0;
-    //     } catch (Exception e) {
-    //         return 0.0;
-    //     }
-    // }
-
-
-
+    @GetMapping("/api/wallet/balance")
+    @ResponseBody
+    public Double getBalance(Principal principal) {
+        try {
+            Wallet wallet = walletService.getWalletByEmail(principal.getName());
+            if (wallet != null) {
+                return wallet.getBalance();
+            }
+            return 0.0;
+        } catch (Exception e) {
+            return 0.0;
+        }
+    }
 
 }
