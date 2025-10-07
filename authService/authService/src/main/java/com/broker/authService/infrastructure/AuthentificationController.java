@@ -54,7 +54,7 @@ public class AuthentificationController {
 
     @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
-        String token = authentificationService.validateOtpAndGenerateToken(email, otp);
+        String token = authentificationService.validateOtp(email, otp);
         if (token != null) {
             return ResponseEntity.ok("LOGIN_SUCCESS. Token: " + token);
         } else {

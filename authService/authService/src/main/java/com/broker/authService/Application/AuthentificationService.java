@@ -128,19 +128,7 @@ public class AuthentificationService {
         repository.findByEmail(email).ifPresent(u -> otpStore.remove(u.getId()));
     }
 
-    public boolean validateOtp(String email, String otp) {
-        Optional<UserCredential> userOpt = repository.findByEmail(email);
-        if (userOpt.isEmpty()) return false;
-
-        UserCredential user = userOpt.get();
-        String expectedOtp = otpStore.get(user.getId());
-        boolean valid = otp != null && otp.equals(expectedOtp);
-
-        if (valid) otpStore.remove(user.getId());
-        return valid;
-    }
-
-    public String validateOtpAndGenerateToken(String email, String otp) {
+    public String validateOtp(String email, String otp) {
         Optional<UserCredential> userOpt = repository.findByEmail(email);
         if (userOpt.isEmpty()) return null;
 
