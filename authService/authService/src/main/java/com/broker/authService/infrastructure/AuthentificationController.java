@@ -20,6 +20,11 @@ public class AuthentificationController {
         this.authentificationService = authentificationService;
     }
 
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("AuthService is working!");
+    }
+
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody UserCredentialRequest request) {
         authentificationService.register(request.getEmail(), request.getPassword());
