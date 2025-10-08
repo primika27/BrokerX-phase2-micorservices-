@@ -46,16 +46,6 @@ public class WalletController {
         }
     }
 
-    @GetMapping("/balance")
-    public ResponseEntity<Double> getBalance(@RequestHeader(value = "X-Authenticated-User", required = true) String ownerEmail) {
-        try {
-            Double balance = walletService.getBalance(ownerEmail);
-            return ResponseEntity.ok(balance);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(0.0);
-        }
-    }
-
     @PostMapping("/create")
     public ResponseEntity<String> createWallet(@RequestHeader("X-Authenticated-User") String ownerEmail) {
         try {
@@ -64,5 +54,79 @@ public class WalletController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Failed to create wallet: " + e.getMessage());
         }
+    }
+
+    // Internal service endpoints (no authentication required)
+    @PostMapping("/transaction")
+    public ResponseEntity<String> transaction(
+            @RequestParam("ownerEmail") String ownerEmail,
+            @RequestParam("amount") double amount,
+            @RequestParam("type") String type) { // "DEBIT" ou "CREDIT"
+        
+        if (ownerEmail == null || ownerEmail.isEmpty()) {
+            return ResponseEntity.badRequest().body("Owner email is required");
+        }
+        
+        if (amount <= 0) {
+            return ResponseEntity.badRequest().body("Amount must be positive.");
+        }
+        
+        try {
+            boolean success;
+            String operation;
+            
+            if ("DEBIT".equalsIgnoreCase(type)) {
+                success = walletService.debit(ownerEmail, amount);
+                operation = "Debit";
+            } else if ("CREDIT".equalsIgnoreCase(type)) {
+                success = walletService.deposit(ownerEmail, amount);
+                operation = "Credit";
+            } else {
+                return ResponseEntity.badRequest().body("Type must be 'DEBIT' or 'CREDIT'");
+            }
+            
+            if (success) {
+                return ResponseEntity.ok(operation + " of " + amount + "$ successful.");
+            } else {
+                return ResponseEntity.badRequest().body(operation + " failed. Check balance or try again.");
+            }
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("An error occurred: " + e.getMessage());
+        }
+    }
+
+    // Unified balance endpoint that handles both user and service calls
+    @GetMapping("/balance")
+    public ResponseEntity<Double> getBalance(
+            @RequestHeader(value = "X-Authenticated-User", required = false) String authenticatedUser,
+            @RequestParam(value = "ownerEmail", required = false) String ownerEmail) {
+        
+        // Si ownerEmail n'est pas fourni en paramètre, utiliser l'email de l'utilisateur authentifié
+        if (ownerEmail == null || ownerEmail.isEmpty()) {
+            ownerEmail = authenticatedUser;
+        }
+        
+        // Vérifier si c'est un appel de service (via Gateway avec X-Service-Call)
+        if (authenticatedUser != null && authenticatedUser.startsWith("service-")) {
+            try {
+                Double balance = walletService.getBalance(ownerEmail);
+                return ResponseEntity.ok(balance);
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body(0.0);
+            }
+        }
+        
+        // Pour les appels utilisateur normaux via Gateway
+        if (authenticatedUser != null && authenticatedUser.equals(ownerEmail)) {
+            try {
+                Double balance = walletService.getBalance(ownerEmail);
+                return ResponseEntity.ok(balance);
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body(0.0);
+            }
+        }
+        
+        // Si aucune authentification valide
+        return ResponseEntity.status(403).body(0.0);
     }
 }

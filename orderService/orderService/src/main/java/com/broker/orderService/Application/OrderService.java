@@ -12,6 +12,8 @@ import com.broker.orderService.domain.Transaction;
 import com.broker.orderService.domain.TransactionType;
 import com.broker.orderService.infrastructure.repo.OrderRepository;
 import com.broker.orderService.infrastructure.repo.TransactionRepository;
+import com.broker.orderService.infrastructure.client.WalletServiceClient;
+import org.springframework.http.ResponseEntity;
 
 @Service
 @Transactional
@@ -22,41 +24,66 @@ public class OrderService {
 
     @Autowired
     private TransactionRepository transactionRepository;
+    
+    @Autowired
+    private WalletServiceClient walletServiceClient;
 
 
     // Acheter des actions
     
-@Transactional
-    public boolean acheterAction(int clientId, String symbol, double price, int quantity) {
+    @Transactional
+    public boolean acheterAction(String clientEmail, String symbol, double price, int quantity) {
+        try {
+            double total = price * quantity;
+            
+            // 1. Vérifier le solde du wallet avant de créer l'ordre
+            ResponseEntity<Double> balanceResponse = walletServiceClient.getBalance(clientEmail);
+            if (balanceResponse == null || balanceResponse.getBody() == null) {
+                System.err.println("Impossible de récupérer le solde du wallet pour " + clientEmail);
+                return false;
+            }
+            
+            double currentBalance = balanceResponse.getBody();
+            if (currentBalance < total) {
+                System.err.println("Solde insuffisant pour " + clientEmail + ". Solde: " + currentBalance + ", Requis: " + total);
+                return false;
+            }
+            
+            // 2. Débiter le wallet
+            ResponseEntity<String> debitResponse = walletServiceClient.walletTransaction(clientEmail, total, "DEBIT");
+            if (debitResponse == null || !debitResponse.getStatusCode().is2xxSuccessful()) {
+                System.err.println("Échec du débit du wallet pour " + clientEmail);
+                return false;
+            }
+            
+            // 3. Créer l'ordre après débit réussi
+            Order order = new Order();
+            order.setSymbol(symbol);
+            order.setPrice(price);
+            order.setQuantity(quantity);
+            order.setStatus(1); // exécuté
+            order.setOrderType("BUY");
+            Order savedOrder = orderRepository.save(order);
 
-    try {
-        // Créer l'ordre en positionnant explicitement clientId et status
-        Order order = new Order();
-        order.setSymbol(symbol);
-        order.setPrice(price);
-        order.setQuantity(quantity);
-        order.setStatus(1); // exécuté
-        order.setOrderType("BUY");
-        Order savedOrder = orderRepository.save(order);
-        
-        // Créer une transaction pour l'audit trail
-        String description = String.format("Achat %d actions %s à %.2f€", quantity, symbol, price);
-            // Transaction transaction = new Transaction(
-            //     savedOrder.getOrderId(),
-            //     TransactionType.ORDER,
-            //     total,
-            //     portefeuille.getPortefeuilleId(),
-            //     description
-            // );
-        //transactionRepository.save(transaction);
-        
-        return true;
-        
-    } catch (Exception e) {
-        System.err.println("Erreur acheterAction: " + e.getMessage());
-        return false;
+            // 4. Créer la transaction pour l'audit trail
+            Transaction transaction = new Transaction(
+                savedOrder.getOrderId(),
+                TransactionType.ORDER,
+                total, 
+                0, // On peut mettre 0 ou un ID générique puisqu'on utilise l'email maintenant
+                String.format("Achat %d actions %s à %.2f$ par %s", quantity, symbol, price, clientEmail)
+            );
+            transactionRepository.save(transaction);
+            
+            System.out.println("Achat réussi pour " + clientEmail + ": " + quantity + " " + symbol + " à " + price + "$ (Total: " + total + "$)");
+            return true;
+            
+        } catch (Exception e) {
+            System.err.println("Erreur acheterAction: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
-}
 
 //  @Transactional
 //    public boolean vendreAction(int clientId, String symbol, double price, int quantity) {
@@ -99,8 +126,8 @@ public class OrderService {
 //     }
 // }
 
-    public boolean passerOrdre(int clientId, String symbol, double price, int quantity) {
-        return acheterAction(clientId, symbol, price, quantity);
+    public boolean passerOrdre(String clientEmail, String symbol, double price, int quantity) {
+        return acheterAction(clientEmail, symbol, price, quantity);
     }
 
   
@@ -116,6 +143,7 @@ public class OrderService {
             order.setPrice(newPrice);
             order.setQuantity(newQuantity);
             orderRepository.save(order);
+
         }
     }
 

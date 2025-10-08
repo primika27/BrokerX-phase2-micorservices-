@@ -39,13 +39,37 @@ public class WalletService {
 
         wallet.setBalance(wallet.getBalance() + amount);
         walletRepository.save(wallet);
-        
-        System.out.println("Dépôt de " + amount + "€ effectué pour " + ownerEmail);
+
+        System.out.println("Dépôt de " + amount + "$ effectué pour " + ownerEmail);
         return true;
     }
 
     public Double getBalance(String ownerEmail) {
         Wallet wallet = walletRepository.findByOwnerEmail(ownerEmail);
         return wallet != null ? wallet.getBalance() : 0.0;
+    }
+
+    @Transactional
+    public boolean debit(String ownerEmail, double amount) {
+        if (amount <= 0) {
+            return false;
+        }
+
+        Wallet wallet = walletRepository.findByOwnerEmail(ownerEmail);
+        if (wallet == null) {
+            System.out.println("Wallet not found for " + ownerEmail);
+            return false; // Wallet doesn't exist
+        }
+
+        if (wallet.getBalance() < amount) {
+            System.out.println("Insufficient funds for " + ownerEmail + ". Balance: " + wallet.getBalance() + ", Required: " + amount);
+            return false; // Insufficient funds
+        }
+
+        wallet.setBalance(wallet.getBalance() - amount);
+        walletRepository.save(wallet);
+        
+        System.out.println("Débit de " + amount + "$ effectué pour " + ownerEmail + ". Nouveau solde: " + wallet.getBalance());
+        return true;
     }
 }
