@@ -15,14 +15,23 @@ public class FeignConfig implements RequestInterceptor{
     @Override//intercepts toutes requet feign  et copie automatiquement le header Authorization recu dans
     //la requete entrante vers la requete sortante
     public void apply(RequestTemplate template) {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        if (attributes != null) {
-            HttpServletRequest request = attributes.getRequest();
-            // Copy headers from the original request to the Feign request
-            request.getHeaderNames().asIterator().forEachRemaining(headerName -> {
-                template.header(headerName, request.getHeader(headerName));
-            });
-        }
+            // Marque la requête comme venant d'un autre microservice
+            template.header("X-Service-Call", "client-service");
+
+            // (optionnel) tu peux aussi copier le header Authorization si tu veux
+            // mais ici pas nécessaire car ce sont des appels internes
     }
+    
+    
+    // public void apply(RequestTemplate template) {
+    //     ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+    //     if (attributes != null) {
+    //         HttpServletRequest request = attributes.getRequest();
+    //         // Copy headers from the original request to the Feign request
+    //         request.getHeaderNames().asIterator().forEachRemaining(headerName -> {
+    //             template.header(headerName, request.getHeader(headerName));
+    //         });
+    //     }
+    // }
 
 }

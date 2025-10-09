@@ -37,6 +37,11 @@ public class ClientController {
         return ResponseEntity.ok("Client registered successfully!");
     }
 
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("ClientService is working!");
+    }
+
 
     @GetMapping("/getByEmail")
     public ResponseEntity<Integer> getByEmail(@RequestParam String email) {

@@ -4,7 +4,7 @@ import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import org.springframework.stereotype.Component;
 
-@Component
+
 public class OrderServiceFeignConfig implements RequestInterceptor {
 
     @Override

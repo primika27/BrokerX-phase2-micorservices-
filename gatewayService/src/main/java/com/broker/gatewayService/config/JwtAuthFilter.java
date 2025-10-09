@@ -22,13 +22,14 @@ public class JwtAuthFilter implements GatewayFilter {
         String path = exchange.getRequest().getURI().getPath();
 
         // Allow public endpoints (all auth endpoints should be public)
-        if (path.startsWith("/api/auth/")) {
+        if (path.startsWith("/api/auth/")|| path.startsWith("/api/clients/register")) {
             return chain.filter(exchange);
         }
 
         // Allow internal service calls
         String serviceCallHeader = exchange.getRequest().getHeaders().getFirst("X-Service-Call");
         if (serviceCallHeader != null && !serviceCallHeader.isEmpty()) {
+            System.out.println("Appel interne détecté : " + serviceCallHeader);
             // Pour les appels internes, ajouter un header générique
             ServerWebExchange modifiedExchange = exchange.mutate()
                     .request(exchange.getRequest().mutate()
@@ -46,6 +47,7 @@ public class JwtAuthFilter implements GatewayFilter {
 
         String token = authHeader.substring(7);
         if (!jwtService.validateToken(token)) {
+            System.out.println("JWT validation failed: " + token);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
