@@ -1,0 +1,14 @@
+@startuml dss_uc03
+title DSS - UC03: Approvisionnement du portefeuille
+
+actor ":Client" as Client
+participant ":Système" as System
+
+Client -> System : deposerFonds(int montant)
+alt Montant valide et paiement accepté
+    System --> Client : confirmationDepot: int nouveauSolde
+else Montant invalide ou paiement refusé
+    System --> Client : erreurDepot: String raison
+end
+
+@enduml

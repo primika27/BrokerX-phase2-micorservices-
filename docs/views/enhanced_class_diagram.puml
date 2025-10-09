@@ -1,0 +1,63 @@
+@startuml "BrokerX Class Diagram"
+
+
+class Client {
+    -clientId : int
+    -name : String
+    -email : String
+    -motDePasse : String
+    -verificationToken : String
+    -statut : String
+}
+
+class Portefeuille {
+    -id : int
+    -clientId : int
+    -solde : BigDecimal
+}
+
+enum TransactionType {
+    DEPOSIT("Dépôt")
+    WITHDRAWAL("Retrait") 
+    ORDER("Commande")
+    -description : String
+}
+
+class Transaction {
+    -transactionId : int
+    -orderId : Integer
+    -type : TransactionType
+    -amount : BigDecimal
+    -portefeuilleId : int
+    -dateTransaction : LocalDateTime
+    -description : String
+    --
+    +Transaction(TransactionType, BigDecimal, int, String)
+    +Transaction(TransactionType, BigDecimal, int, Integer, String)
+}
+
+class Order {
+    -orderId : int
+    -clientOrderId : String
+    -symbole : String
+    -type : String
+    -quantite : BigDecimal
+    -prix : BigDecimal
+    -statut : String
+}
+
+
+
+' Relations
+Client ||--|| Portefeuille : "possède"
+Client ||--o{ Order : "passe"
+Portefeuille ||--o{ Transaction : "génère"
+Order ||--o| Transaction : "crée"
+Transaction }o--|| TransactionType : "utilise"
+
+
+note top of Transaction : "Audit trail complet\nToutes les opérations financières\nsont tracées avec @Transactional"
+
+note right of TransactionType : "Enum pour typer\ntoutes les transactions:\nDEPOT, RETRAIT, ORDER"
+
+@enduml

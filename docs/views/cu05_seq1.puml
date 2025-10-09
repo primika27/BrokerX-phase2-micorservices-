@@ -1,0 +1,30 @@
+@startuml
+actor User
+
+title Achat d'actions par un utilisateur
+
+User -> OrderController : placerOrder(String symbol, double price, int quantity) : String
+OrderController -> OrderService : acheterAction(int clientId, String symbol, double price, int quantity) : boolean
+
+OrderService -> PortefeuilleRepository : findByClient_ClientId(clientId) : Portefeuille
+PortefeuilleRepository --> OrderService : Portefeuille
+
+alt Solde suffisant
+    OrderService -> PortefeuilleRepository : save(Portefeuille (nouveau solde)) : Portefeuille
+    PortefeuilleRepository --> OrderService : Portefeuille
+
+    OrderService -> OrderRepository : save(Order) : Order
+    OrderRepository --> OrderService : Order
+
+    OrderService -> TransactionRepository : save(Transaction(ORDER)) : Transaction
+    TransactionRepository --> OrderService : Transaction
+    note right : Audit trail avec TransactionType.ORDER
+
+    OrderService --> OrderController : true
+    OrderController --> User : "SUCCESS"
+else Solde insuffisant
+    OrderService --> OrderController : false
+    OrderController --> User : "ERROR: Solde insuffisant"
+end
+
+@enduml

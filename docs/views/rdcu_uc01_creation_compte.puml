@@ -1,0 +1,44 @@
+@startuml rdcu_uc01_creation_compte
+title RDCU - UC01: Création de compte
+
+
+participant ":ClientController" as Controller
+participant ":ClientService" as Service
+participant ":Client" as ClientEntity
+participant ":ClientRepository" as Repository
+participant ":JavaEmailService" as JavaEmailService
+participant ":PortefeuilleService" as PortefeuilleService
+
+
+ -> Controller : register(nom : String, email : String, motDePasse : String )
+activate Controller
+
+Controller -> Service : register(nom : String, email : String, motDePasse : String)
+activate Service
+
+Service -> Repository : findByEmail(email : String)
+
+alt email déjà utilisé
+    Repository --> Service : clientExistant
+    Service --> Controller : erreurEmailUtilise : exception
+end
+Repository --> Service : email : String 
+
+Service -> ClientEntity ** : new Client(nom, email, motDePasse)
+Service -> ClientEntity : setStatut("PENDING")
+Service -> ClientEntity : setVerificationToken(UUID.randomUUID().toString())
+
+Service -> Repository : save(client) : client
+Repository --> Service : clientSauvegarde
+
+Service -> JavaEmailService : sendVerificationEmail(client)
+activate JavaEmailService
+JavaEmailService --> Service : emailEnvoye
+deactivate JavaEmailService
+
+Service -> PortefeuilleService : createPortefeuille(client)
+activate PortefeuilleService
+PortefeuilleService --> Service : portefeuille
+deactivate PortefeuilleService
+
+@enduml

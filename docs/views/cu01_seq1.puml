@@ -1,0 +1,20 @@
+@startuml
+title Connexion d'un utilisateur (avec MFA)
+
+actor User
+
+User -> AuthentificationController : login(email, password) : String
+AuthentificationController -> AuthentificationService : loginWithMfa(email, password) : String
+
+AuthentificationService -> ClientRepository : findByEmail(email) : Client
+ClientRepository --> AuthentificationService : Client
+
+alt Client trouvé et actif
+    AuthentificationService -> JavaMailSender : sendOTP(client)
+    AuthentificationService --> AuthentificationController : "MFA_REQUIRED"
+else Problème (email introuvable, statut inactif, mauvais mot de passe)
+    AuthentificationService --> AuthentificationController : "LOGIN_FAILED"
+end
+
+AuthentificationController --> User : "LOGIN_SUCCESS" / "MFA_REQUIRED" / "LOGIN_FAILED"
+@enduml

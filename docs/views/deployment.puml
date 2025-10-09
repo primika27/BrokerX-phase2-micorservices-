@@ -1,0 +1,70 @@
+@startuml
+title "Déploiement BrokerX (Dev + CI/CD)"
+
+actor "Utilisateur (Navigateur)" as user
+
+' Zone Dev/CI
+node "Espace Dev/CI" as devci {
+  node "Machine Dev" as dev {
+    artifact "Code source\n(Spring Boot + JPA + Thymeleaf)" as src
+    artifact "docker-compose.yml\n(.env.dev / .env.prod)" as compose
+    component "Docker Desktop" as docker
+  }
+
+  node "GitHub" as gh {
+    node "Repository" as repo
+    node "Actions (CI)" as actions {
+      artifact "Build Maven\nTests JUnit" as maven
+      artifact "Image Docker\nbrokerx:latest" as image
+      artifact "Test container\n/actuator/health" as healthcheck
+    }
+    node "Registry (optionnel)" as reg {
+      artifact "GHCR / Docker Hub" as registry
+    }
+  }
+}
+
+' Runtime
+node "VM Docker Host (démo/serveur)" as vm {
+  node "Réseau Docker" as net {
+    node "Container: brokerx-app" as app {
+      component "Spring Boot 3 (Java 21)\n- UI Thymeleaf\n- REST /api/*\n- Actuator /actuator/health\n- Spring Security (MFA)" as sb
+      component "H2 (file mode)" as h2
+    }
+  }
+
+  folder "Volume persistant" as vol {
+    artifact "./data/brokerxdb.mv.db\n./data/brokerxdb.trace.db" as h2files
+  }
+
+  node "Logs (stdout/stderr)" as logs
+}
+
+' Liaisons
+user --> app : HTTP 8080\n/ (UI), /api/*, /actuator/health
+app --> h2 : JDBC (embedded/file)
+h2 --> h2files : Fichiers DB (volume)
+app ..> logs : Logback
+
+' Flux CI/CD
+dev --> repo : git push
+actions --> maven : mvn test / package
+maven --> image : docker build
+image --> healthcheck : docker run + curl /actuator/health
+actions --> registry : push (optionnel)
+registry --> vm : pull (optionnel)
+
+' Déploiement
+dev --> vm : docker compose up -d\n(utilisation locale ou démo)
+' (Alternative CD) actions --> vm : Job CD (SSH + compose)\n(si activé)
+
+' Notes
+note right of app
+Exposition: 8080\nProfil: dev/prod via .env\nSanté: /actuator/health\nSécurité: session + MFA (OTP)
+end note
+
+note bottom of h2
+H2 en mode fichier (jdbc:h2:file:./data/brokerxdb)\nVolume persistant monté dans le container
+end note
+
+@enduml

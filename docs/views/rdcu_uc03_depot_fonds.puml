@@ -1,0 +1,62 @@
+@startuml rdcu_uc03_depot_fonds
+title UC03 - Dépôt de fonds avec audit trail
+
+participant "PortefeuilleController" as Controller
+participant "PortefeuilleService" as Service
+participant "PortefeuilleRepository" as PortefeuilleRepo
+participant "Portefeuille" as PortefeuilleEntity
+participant "TransactionRepository" as TransactionRepo
+participant "Transaction" as TransactionEntity
+participant "ClientService" as ClientService
+
+-> Controller : deposit(amount : double)
+activate Controller
+
+alt Vérification anti-fraude échoue
+    -> Controller : validerMontant(amount : double)
+    alt amount <= 0
+        <-- Controller : "ERROR: Le montant doit être positif"
+        -> Controller : "ERROR: Dépôt refusé - montant invalide"
+    end
+end
+
+-> Controller : findByEmail(principal.getName())
+Controller -> ClientService : findByEmail()
+ClientService --> Controller : client
+
+alt Client non trouvé
+    <-- Controller : "ERROR: Client non trouvé"
+    -> Controller : "ERROR: Dépôt refusé - client non trouvé"
+    deactivate Service
+    deactivate Controller
+else
+    ' client trouvé
+end
+
+Controller -> Service : getPortefeuilleByClientId(client.getClientId())
+Service -> PortefeuilleRepo : findByClient_ClientId(clientId)
+PortefeuilleRepo --> Service : portefeuille : PortefeuilleEntity
+Service --> Controller : portefeuille : PortefeuilleEntity
+
+alt Portefeuille trouvé
+    -> Controller : deposer(clientId : String, amount : double)
+    Controller -> Service : deposerFonds(portefeuilleId : String, amount : double)
+    Service -> PortefeuilleRepo : findById(portefeuilleId)
+    PortefeuilleRepo --> Service : portefeuille
+    Service -> PortefeuilleEntity : setSolde(solde + amount)
+    Service -> PortefeuilleRepo : save(portefeuille)
+    PortefeuilleRepo --> Service : portefeuilleMisAJour
+    Service --> Controller : true (succès) : boolean
+    <-- Controller : "SUCCESS: Dépôt de {amount}€ effectué avec succès"
+
+    -> Controller : createTransaction(DEPOSIT, amount, portefeuilleId, description)
+    Controller -> TransactionRepo : save(transaction)
+    TransactionRepo --> Controller : transactionSauvegardee
+else Portefeuille non trouvé
+    Service --> Controller : false (échec) : boolean
+    <-- Controller : "ERROR: Portefeuille non trouvé"
+end
+
+deactivate Service
+deactivate Controller
+@enduml

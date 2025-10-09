@@ -1,0 +1,23 @@
+@startuml dss_uc05
+title DSS - UC05: Placement d'un ordre
+
+actor ":Client" as Client
+participant ":Système" as System
+
+== Placement d'ordre d'achat ==
+Client -> System : placerOrdre(String symbole, int quantite, double prixLimite)
+alt Fonds suffisants et ordre valide
+    System --> Client : confirmationOrdre(numeroOrdre, statut)
+else Fonds insuffisants ou ordre invalide
+    System --> Client : erreurOrdre(raison)
+end
+
+== Placement d'ordre de vente ==
+Client -> System : passerOrdreVente(symbole, quantite, prixLimite)
+alt Actions disponibles et ordre valide
+    System --> Client : confirmationOrdre(numeroOrdre, statut)
+else Actions insuffisantes ou ordre invalide
+    System --> Client : erreurOrdre(raison)
+end
+
+@enduml

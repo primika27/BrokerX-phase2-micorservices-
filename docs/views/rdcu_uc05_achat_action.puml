@@ -1,0 +1,68 @@
+@startuml rdcu_uc05_achat_action
+title UC05 - Placement ordre d'achat avec audit trail
+
+participant "OrderController" as Controller
+participant "ClientService" as ClientService
+participant "OrderService" as Service
+participant "PortefeuilleRepository" as PortefeuilleRepo
+participant "Portefeuille" as PortefeuilleEntity
+participant "OrderRepository" as OrderRepo
+participant "TransactionRepository" as TransactionRepo
+participant "Map<String, Double> ETF_PRICES" as Map
+-> Controller : placeOrder(symbol : String, qty : int, orderType : String= "BUY")
+activate Controller
+
+Controller -> Controller : findByEmail(principal.getName())
+Controller -> ClientService : findByEmail()
+
+
+alt Client non trouvé
+    <-- Controller : "ERROR: Client non trouvé"
+    deactivate Controller
+
+alt quantité <= 0 ou symbole invalide
+    <-- Controller : "ERROR: Paramètres invalides"
+    deactivate Controller
+else Client trouvé
+    ClientService --> Controller : client : Client
+    Controller-> Map : get(symbol)
+
+    alt prix null
+        Map --> Controller : "Symbole non supporté" : Error
+    else prix valide
+        Map --> Controller : prix : Double
+    end
+    
+    alt orderType = "BUY" 
+        Controller -> Service : acheterAction(clientId, symbol, prix, qty)
+        activate Service
+    alt orderType = "SELL"
+        Controller -> Service : vendreAction(clientId, symbol, prix, qty)
+        activate Service
+        
+        Service -> PortefeuilleRepo : findByClient_ClientId(clientId)
+        PortefeuilleRepo --> Service : portefeuille
+        
+        alt portefeuille trouvé et solde suffisant
+            Service -> PortefeuilleEntity : setSolde(solde - total)
+            Service -> PortefeuilleRepo : saveAndFlush(portefeuille)
+            
+            Service -> OrderRepo : save(new Order(clientId, symbol, prix, qty, "BUY", status=1))
+            OrderRepo --> Service : orderSauvegarde
+            
+            Service -> TransactionRepo : save(new Transaction(orderId, ORDER, total, portefeuilleId, description))
+            TransactionRepo --> Service : transactionSauvegardee
+            
+            Service --> Controller : true : boolean 
+            deactivate Service
+            <-- Controller : "SUCCESS: Achat de qty symbol à prix €. Total: total€"
+        else solde insuffisant ou portefeuille null
+            Service --> Controller : false : boolean
+            deactivate Service
+            <-- Controller : "ERROR: Fonds insuffisants ou portefeuille inexistant"
+        end
+    end
+end
+
+deactivate Controller
+@enduml

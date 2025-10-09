@@ -1,0 +1,48 @@
+@startuml
+    class Client {
+        -id : int
+        -email : String
+        -téléphone : String
+        -MotDePasse : String
+        -statut : StatutUtilisateur
+        @startuml
+        class Client {
+            -clientId : int
+            -name : String
+            -email : String
+            -motDePasse : String
+            -verificationToken : int
+            -statut : String
+        }
+
+        class Portefeuille {
+            -walletId : int
+            -solde : Decimal
+        }
+
+        class Transaction {
+            -transId : int
+            -montant : Decimal
+            -statut : String
+        }
+
+        class Ordre {
+            -orderId : int
+            -clientOrderId : String
+            -symbole : String
+            -sens : String
+            -type : String
+            -quantite : Decimal
+            -prix : Decimal
+            -statut : String
+        }
+
+
+        Client "1" -- "1" Portefeuille : possède >
+        Portefeuille "1" -- "*" Transaction : contient >
+        Client "1" -- "*" Ordre : passe >
+        Ordre "*" -- "1" Portefeuille : utilise fonds >
+        @enduml
+  Client "1" -- "*" Ordre : passe >
+  Ordre "*" -- "1" Portefeuille : utilise fonds >
+  @enduml

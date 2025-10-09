@@ -1,0 +1,20 @@
+
+
+
+@startuml
+actor User
+title Vérification de l'email d'un nouvel utilisateur
+
+User -> AuthentificationController : verifyByToken(String token) : Status
+AuthentificationController -> AuthentificationService : verifyByToken(String token) : Status
+AuthentificationService -> ClientRepository : findByVerificationToken(String token) : Client
+ClientRepository --> AuthentificationService : Client
+AuthentificationService -> ClientRepository : save(Client client) : Client
+AuthentificationService -> PortefeuilleService : createPortefeuille(Client client) : Portefeuille
+PortefeuilleService -> PortefeuilleRepository : save(Portefeuille portefeuille) : Portefeuille
+PortefeuilleRepository --> PortefeuilleService : Portefeuille
+PortefeuilleService --> AuthentificationService : Portefeuille
+AuthentificationService --> AuthentificationController : Status
+AuthentificationController --> User : Status (success or error view)
+    
+@enduml

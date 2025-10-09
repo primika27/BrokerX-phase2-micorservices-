@@ -1,0 +1,46 @@
+@startuml uc02_verification_otp
+title UC02b - Vérification OTP
+
+
+participant "AuthentificationController" as Controller
+participant "AuthentificationService" as Service
+participant "otpStore Map<String, String>" as OtpStore
+participant "Spring Security" as Security
+participant "HttpSession" as Session
+participant ":ClientRepository" as Repository
+
+-> Controller : verify-otp(email : String, otp : String)
+activate Controller
+
+Controller -> Service : validateOtp(email : String, otp : String)
+activate Service
+Service -> Repository : findByEmail(email : String)
+
+alt Client trouvé et actif
+Repository --> Service : client : ClientEntity
+
+else Problème (email introuvable, statut inactif)
+Service --> Controller : "OTP_VALIDATION_FAILED" : false boolean
+
+end
+
+Service -> OtpStore : get(client.getClientId())
+OtpStore --> Service : otp : String
+
+alt OTP correct
+    Service --> Controller : true
+    deactivate Service
+
+    Controller -> Security : setAuthentication(email)
+    Controller -> Session : createSession(email)
+    Session --> Controller : session actif  
+
+    <-- Controller : "LOGIN_SUCCESS"
+else OTP incorrect
+    Service --> Controller : false
+    deactivate Service
+    <--Controller : "OTP invalide. Veuillez réessayer."
+end
+
+deactivate Controller
+@enduml

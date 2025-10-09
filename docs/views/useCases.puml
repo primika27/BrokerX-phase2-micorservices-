@@ -1,0 +1,15 @@
+@startuml
+left to right direction
+actor Client as C
+
+rectangle BrokerX {
+  usecase "UC-01\nInscription&Vérification d’identité" as UC01
+  usecase "UC-02\nAuthentification & MFA" as UC02
+  usecase "UC-03\nApprovisionnement du portefeuille" as UC03
+  usecase "UC-05\nPlacement d'un ordre" as UC05
+}
+C --> UC01
+C --> UC02
+C --> UC03
+C --> UC05
+@enduml

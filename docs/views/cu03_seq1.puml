@@ -1,0 +1,19 @@
+@startuml
+title Dépôt d'argent dans le portefeuille d'un utilisateur
+
+actor User
+
+User -> PortefeuilleController : deposit(double amount) : String
+PortefeuilleController -> PortefeuilleService : deposer(int clientId, double amount) : boolean
+PortefeuilleService -> PortefeuilleRepository : findByClient_ClientId(int clientId) : Portefeuille
+PortefeuilleRepository --> PortefeuilleService : Portefeuille
+PortefeuilleService -> PortefeuilleRepository : save(Portefeuille portefeuille) : Portefeuille
+PortefeuilleRepository --> PortefeuilleService : Portefeuille
+
+note right : @Transactional garantit l'atomicité
+PortefeuilleService -> TransactionRepository : save(Transaction(DEPOSIT)) : Transaction
+TransactionRepository --> PortefeuilleService : Transaction
+
+PortefeuilleService --> PortefeuilleController : boolean
+PortefeuilleController --> User : String ("SUCCESS" / "ERROR")
+@enduml

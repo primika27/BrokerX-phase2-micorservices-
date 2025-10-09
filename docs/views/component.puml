@@ -1,0 +1,74 @@
+@startuml
+title Component Diagram BrokerxApplication
+
+package "Presentation Layer" {
+  [AuthentificationController <<Controller>>]
+  [ClientController <<Controller>>]
+  [OrderController <<Controller>>]
+  [PageController <<Controller>>]
+  [PortefeuilleController <<Controller>>]
+}
+
+package "Application Layer" {
+  [AuthentificationService <<Service>>]
+  [ClientService <<Service>>]
+  [OrderService <<Service>>]
+  [PortefeuilleService <<Service>>]
+}
+
+package "Infrastructure Layer" {
+  [ClientRepository <<Repository>>]
+  [OrderRepository <<Repository>>]
+  [PortefeuilleRepository <<Repository>>]
+  [JavaMailSender <<external>>]
+  [Spring Data JPA <<framework>>]
+  [Spring Security <<framework>>]
+  [Spring Boot Actuator <<framework>>]
+  [Database (H2/PostgreSQL) <<external>>]
+}
+
+package "Domain Layer" {
+  [Client <<Entity>>]
+  [Order <<Entity>>]
+  [Portefeuille <<Entity>>]
+  [Transaction <<Entity>>]
+}
+
+[BrokerxApplication] --> [AuthentificationController]
+[BrokerxApplication] --> [ClientController]
+[BrokerxApplication] --> [OrderController]
+[BrokerxApplication] --> [PageController]
+[BrokerxApplication] --> [PortefeuilleController]
+
+' Controllers use Services
+[AuthentificationController] --> [AuthentificationService]
+[ClientController] --> [ClientService]
+[OrderController] --> [OrderService]
+[PortefeuilleController] --> [PortefeuilleService]
+[PageController] --> [ClientService]
+
+' Services use Repositories
+[AuthentificationService] --> [ClientRepository]
+[AuthentificationService] --> [JavaMailSender]
+[ClientService] --> [ClientRepository]
+[OrderService] --> [OrderRepository]
+[OrderService] --> [PortefeuilleRepository]
+[PortefeuilleService] --> [PortefeuilleRepository]
+
+' Repositories use JPA and Database
+[ClientRepository] --> [Spring Data JPA]
+[OrderRepository] --> [Spring Data JPA]
+[PortefeuilleRepository] --> [Spring Data JPA]
+[Spring Data JPA] --> [Database (H2/PostgreSQL)]
+
+' Domain entities
+[ClientRepository] --> [Client]
+[OrderRepository] --> [Order]
+[PortefeuilleRepository] --> [Portefeuille]
+[OrderRepository] --> [Transaction]
+
+' External frameworks
+[Spring Security] ..> [BrokerxApplication]
+[Spring Boot Actuator] ..> [BrokerxApplication]
+
+@enduml

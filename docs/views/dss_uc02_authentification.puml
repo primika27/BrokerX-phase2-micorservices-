@@ -1,0 +1,22 @@
+@startuml dss_uc02
+title DSS - UC02: Authentification & MFA
+
+actor ":Client" as Client
+participant ":Système" as System
+
+Client -> System : login(email, motDePasse)
+alt Identifiants corrects
+    System --> Client : demandeCodeMFA
+    
+    == Vérification MFA ==
+    Client -> System : saisirCodeMFA(int code)
+    alt Code MFA valide  
+        System --> Client : sessionActivee
+    else Code MFA invalide
+        System --> Client : erreurCodeInvalide
+    end
+else Identifiants incorrects
+    System --> Client : erreurAuthentification
+end
+
+@enduml

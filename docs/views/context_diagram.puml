@@ -1,0 +1,19 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(client, "Client", "Investisseur utilisant la plateforme de courtage en ligne")
+Person(backoffice, "Back-Office", "Supervision et gestion des règlements")
+Person(compliance, "Conformité / Risque", "Audit, surveillance pré- et post-trade")
+System_Ext(marketdata, "Fournisseurs de données de marché", "Envoient cotations temps réel")
+System_Ext(exchange, "Bourses externes", "Exécution des ordres")
+
+System(brokerx, "BrokerX", "Plateforme monolithique de courtage")
+
+Rel(client, brokerx, "Passe des ordres, consulte portefeuille, s’authentifie")
+Rel(backoffice, brokerx, "Supervision, gestion des règlements")
+Rel(compliance, brokerx, "Audit, rapports de conformité")
+Rel(marketdata, brokerx, "Flux de données de marché (prix, cotations)")
+Rel(brokerx, exchange, "Routage et exécution des ordres")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,22 @@
+@startuml
+title Consultation de l'historique des transactions
+
+actor User
+
+User -> PortefeuilleController : getTransactionHistory() : List<Transaction>
+PortefeuilleController -> PortefeuilleService : getHistoriqueTransactions(int portefeuilleId) : List<Transaction>
+PortefeuilleService -> TransactionRepository : findByPortefeuilleId(int portefeuilleId) : List<Transaction>
+TransactionRepository --> PortefeuilleService : List<Transaction>
+PortefeuilleService --> PortefeuilleController : List<Transaction>
+PortefeuilleController --> User : Transaction History View
+
+alt par type
+    User -> PortefeuilleController : getTransactionsByType(TransactionType type) : List<Transaction>
+    PortefeuilleController -> PortefeuilleService : getTransactionsByType(int portefeuilleId, TransactionType type) : List<Transaction>
+    PortefeuilleService -> TransactionRepository : findByPortefeuilleIdAndType(int portefeuilleId, TransactionType type) : List<Transaction>
+    TransactionRepository --> PortefeuilleService : List<Transaction>
+    PortefeuilleService --> PortefeuilleController : List<Transaction>
+    PortefeuilleController --> User : Filtered Transaction History View
+end
+
+@enduml

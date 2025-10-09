@@ -1,0 +1,26 @@
+@startuml
+title Retrait d'argent du portefeuille d'un utilisateur
+
+actor User
+
+User -> PortefeuilleController : withdraw(double amount) : String
+PortefeuilleController -> PortefeuilleService : retirer(int clientId, double amount) : boolean
+PortefeuilleService -> PortefeuilleRepository : findByClient_ClientId(int clientId) : Portefeuille
+PortefeuilleRepository --> PortefeuilleService : Portefeuille
+
+alt Solde suffisant
+    note right : @Transactional garantit l'atomicité
+    PortefeuilleService -> PortefeuilleRepository : save(Portefeuille (nouveau solde)) : Portefeuille
+    PortefeuilleRepository --> PortefeuilleService : Portefeuille
+    
+    PortefeuilleService -> TransactionRepository : save(Transaction(WITHDRAWAL)) : Transaction
+    TransactionRepository --> PortefeuilleService : Transaction
+    
+    PortefeuilleService --> PortefeuilleController : true
+    PortefeuilleController --> User : "SUCCESS"
+else Solde insuffisant
+    PortefeuilleService --> PortefeuilleController : false
+    PortefeuilleController --> User : "ERROR: Solde insuffisant"
+end
+
+@enduml

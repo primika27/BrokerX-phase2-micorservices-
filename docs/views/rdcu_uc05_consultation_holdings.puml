@@ -1,0 +1,43 @@
+@startuml rdcu_uc05_consultation_holdings
+title UC05b - Consultation des holdings client
+
+participant "OrderController" as Controller
+participant "ClientService" as ClientService
+participant "OrderService" as Service
+participant "OrderRepository" as OrderRepo
+
+-> Controller : holdings()
+activate Controller
+
+-> Controller : findByEmail(principal.getName())
+Controller -> ClientService : findByEmail()
+ClientService --> Controller : client
+
+alt Client non trouvé
+    <-- Controller : {}
+    deactivate Controller
+else Client trouvé
+    Controller -> Service : getClientHoldings(clientId)
+    activate Service
+    
+    Service -> OrderRepo : findAll()
+    OrderRepo --> Service : listeOrdres
+    
+    Service -> Service : filtrer par clientId et status=1
+    loop Pour chaque ordre exécuté du client
+        alt orderType = "BUY"
+            Service -> Service : ajouterAuHolding(symbol, +quantity)
+        else orderType = "SELL"
+            Service -> Service : ajouterAuHolding(symbol, -quantity)
+        end
+    end
+    
+    Service -> Service : holdings.entrySet().removeIf(entry -> entry.getValue() <= 0)
+    
+    Service --> Controller : mapHoldings<Symbol, Quantity>
+    deactivate Service
+    
+    <-- Controller : 200 OK + holdings : Map<String, Integer>
+    deactivate Controller
+end
+@enduml

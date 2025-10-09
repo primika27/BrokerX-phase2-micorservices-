@@ -1,0 +1,19 @@
+@startuml dss_uc01
+title DSS - UC01: Inscription & Vérification d'identité
+
+actor ":Client" as Client
+participant ":Système" as System
+
+Client -> System : register(nom, email, motDePasse)
+System --> Client : confirmationInscription
+
+Client -> System : verifierEmail(token) 
+alt lien saisie
+System --> Client : emailVerifie, clientVerifie
+
+else lien non saisi
+System --> Client : erreurVerificationEmail, clientNonVerifie
+end
+ 
+
+@enduml

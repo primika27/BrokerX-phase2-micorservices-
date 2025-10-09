@@ -1,0 +1,21 @@
+@startuml rdcu01b_send_verification_email
+title UC01b - Envoi d'un email de vérification
+
+actor Client
+participant "ClientService" as Service
+participant "JavaMailSender" as MailSender
+
+-> Service : sendVerificationEmail(client)
+Service -> Service : generateVerificationUrl(client)
+Service -> Service : buildHtmlMessage(url)
+
+Service -> MailSender : createMimeMessage()
+Service -> MailSender : send(message)
+alt Envoi réussi
+    MailSender --> Service : "OK"
+    Service --> Client : Email envoyé (contient lien de vérification)
+else Envoi échoué
+    MailSender --> Service : Exception
+    Service -> Service : log("Failed to send verification email")
+end
+@enduml

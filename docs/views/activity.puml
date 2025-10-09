@@ -1,0 +1,16 @@
+@startuml
+start
+:push;
+:CI pipeline (lint, build, test);
+if (Tests OK?) then (yes)
+  :Build Docker image;
+  :Push image;
+  : Deploy script;
+  :docker-compose up;
+  :App + DB démarrés;
+  :Healthcheck /health OK;
+else (no)
+  :Fail rapide;
+endif
+stop
+@enduml

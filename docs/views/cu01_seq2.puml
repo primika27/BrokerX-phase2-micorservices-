@@ -1,0 +1,34 @@
+@startuml
+
+title Inscription d'un nouvel utilisateur (avec vérification)
+
+actor User
+
+User -> PageController : register(form data) : View
+PageController -> ClientService : register(name, email, motDePasse) : Client
+ClientService -> ClientRepository : save(Client) : Client
+ClientRepository --> ClientService : Client
+ClientService -> JavaMailSender : sendVerificationEmail(Client) : void
+JavaMailSender --> ClientService : void
+ClientService --> PageController : Client
+PageController --> User : View (inscription en attente vérification)
+
+
+
+alt Lien de vérification cliqué
+    User -> PageController : GET /api/clients/verify?token
+    PageController -> ClientService : verifyByToken(token) : boolean
+    ClientService -> ClientRepository : findByVerificationToken(token) : Client
+    ClientRepository --> ClientService : Client
+    ClientService -> ClientRepository : save(Client (status=ACTIVE)) : Client
+    ClientRepository --> ClientService : Client
+    ClientService --> PageController : true
+    PageController --> User : RedirectView (success page)
+else Lien non cliqué ou token invalide
+    User --> PageController : (aucune action ou mauvais lien)
+    PageController -> ClientService : verifyByToken(token) : false
+    ClientService --> PageController : false
+    PageController --> User : RedirectView (failure page)
+end
+
+@enduml

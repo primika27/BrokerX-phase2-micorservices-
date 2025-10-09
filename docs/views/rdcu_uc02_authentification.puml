@@ -1,0 +1,37 @@
+@startuml rdcu_uc02_authentification
+title RDCU - UC02: Authentification principale
+
+participant ":AuthentificationController" as Controller
+participant ":AuthentificationService" as Service
+participant ":ClientRepository" as Repository
+participant ":Client" as ClientEntity
+participant ":EmailService" as EmailService
+
+-> Controller : login(email : String , motDePasse : String)
+activate Controller
+
+Controller -> Service : loginWithMFA(email, motDePasse)
+activate Service
+
+Service -> Repository : findByEmail(email)
+Repository --> Service : client : CientEntity
+alt Client trouvé et actif
+    alt Mot de passe correct
+        Service -> Service : générer OTP (Random 6 chiffres)
+        Service -> Service : otpStore.put(clientId, otp)
+        Service -> Service : sendOTP(client)
+        Service -> MailSender : envoyer email(OTP)
+        MailSender --> Service : "OK"
+        Service --> Controller : "MFA_REQUIRED"
+      
+    else Mot de passe incorrect
+        Service --> Controller : "LOGIN_FAILED"
+    end
+else Client non trouvé ou inactif
+    Service --> Controller : "LOGIN_FAILED"
+end
+
+deactivate Service
+deactivate Controller
+@enduml
+
