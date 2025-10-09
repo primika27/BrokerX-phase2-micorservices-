@@ -3,8 +3,9 @@ package com.broker.orderService.infrastructure.config;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 
-
+@Configuration
 public class OrderServiceFeignConfig implements RequestInterceptor {
 
     @Override

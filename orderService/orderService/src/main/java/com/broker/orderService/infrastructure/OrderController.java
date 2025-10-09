@@ -8,12 +8,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.http.ResponseEntity;
 import com.broker.orderService.Application.OrderService;
 
 @RestController
+@RequestMapping("/api/orders")
 public class OrderController {
 
     private static final Map<String, Double> ETF_PRICES = new HashMap<>();
@@ -36,7 +38,7 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    @PostMapping("/api/orders/placeOrder")
+    @PostMapping("/placeOrder")
     public ResponseEntity<String> placeOrder(
             @RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail,
             @RequestParam String symbol,
@@ -63,7 +65,7 @@ public class OrderController {
         }
     }
 
-    @GetMapping("/api/orders/holdings")
+    @GetMapping("/holdings")
     public ResponseEntity<String> getHoldings(@RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail) {
         return ResponseEntity.ok("Holdings retrieval not implemented yet for " + clientEmail);
     }
