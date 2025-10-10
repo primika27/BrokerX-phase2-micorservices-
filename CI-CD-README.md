@@ -2,7 +2,7 @@
 
 Ce document décrit le pipeline CI/CD pour l'architecture microservices BrokerX utilisant GitHub Actions avec un self-hosted runner.
 
-## 🏗️ Architecture du Pipeline
+## Architecture du Pipeline
 
 ### 1. Test Job (Ubuntu Latest)
 - **Déclencheurs**: Push sur `main`/`master`, Pull Requests
@@ -31,7 +31,7 @@ Ce document décrit le pipeline CI/CD pour l'architecture microservices BrokerX 
   - Health checks
   - Notifications
 
-## 🛠️ Configuration du Self-Hosted Runner
+## Configuration du Self-Hosted Runner
 
 ### Prérequis sur la VM
 ```bash
@@ -71,7 +71,7 @@ sudo ./svc.sh install
 sudo ./svc.sh start
 ```
 
-## 🔐 Secrets GitHub Required
+## Secrets GitHub Required
 
 Configurer ces secrets dans GitHub (Settings > Secrets and variables > Actions):
 
@@ -82,7 +82,7 @@ EMAIL_PASS=your-app-password
 GRAFANA_ADMIN_PASSWORD=your-secure-password
 ```
 
-## 📁 Structure des Répertoires sur la VM
+## Structure des Répertoires sur la VM
 
 ```
 /home/gha-runner/
@@ -97,7 +97,7 @@ GRAFANA_ADMIN_PASSWORD=your-secure-password
     └── YYYYMMDD_HHMMSS/
 ```
 
-## 🚀 Déploiement
+## Déploiement
 
 ### Déploiement Automatique
 Le déploiement se déclenche automatiquement lors d'un push sur `main`/`master`.
@@ -125,7 +125,7 @@ curl http://localhost:8083/actuator/health  # WalletService
 curl http://localhost:8084/actuator/health  # OrderService
 ```
 
-## 📊 Monitoring et Observabilité
+## Monitoring et Observabilité
 
 ### URLs de Monitoring
 - **Prometheus**: http://[VM-IP]:9090
