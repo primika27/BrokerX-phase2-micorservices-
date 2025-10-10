@@ -1,0 +1,261 @@
+name: BrokerX Microservices CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      # Test databases for integration testing
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Create test environment variables
+        run: |
+          echo "JWT_SECRET=YnJva2VyWFNlY3JldEtleUZvckpXVFNpZ25pbmdTdXBlckxvbmdTdHJpbmdUaGF0SXNTZWN1cmU=" >> $GITHUB_ENV
+          echo "EMAIL_USER=test@example.com" >> $GITHUB_ENV
+          echo "EMAIL_PASS=testpass" >> $GITHUB_ENV
+
+      - name: Test AuthService
+        working-directory: authService/authService
+        run: |
+          ./mvnw clean test -Dspring.profiles.active=test
+
+      - name: Test ClientService
+        working-directory: clientService/clientService
+        run: |
+          ./mvnw clean test -Dspring.profiles.active=test
+
+      - name: Test WalletService  
+        working-directory: walletService/walletService
+        run: |
+          ./mvnw clean test -Dspring.profiles.active=test
+
+      - name: Test OrderService
+        working-directory: orderService/orderService
+        run: |
+          ./mvnw clean test -Dspring.profiles.active=test
+
+      - name: Test Gateway
+        working-directory: gatewayService
+        run: |
+          ./mvnw clean test -Dspring.profiles.active=test
+
+      - name: Build all services
+        run: |
+          echo "Building AuthService..."
+          cd authService/authService && ./mvnw clean package -DskipTests
+          cd ../..
+          
+          echo "Building ClientService..."
+          cd clientService/clientService && ./mvnw clean package -DskipTests
+          cd ../..
+          
+          echo "Building WalletService..."
+          cd walletService/walletService && ./mvnw clean package -DskipTests
+          cd ../..
+          
+          echo "Building OrderService..."
+          cd orderService/orderService && ./mvnw clean package -DskipTests
+          cd ../..
+          
+          echo "Building Gateway..."
+          cd gatewayService && ./mvnw clean package -DskipTests
+          cd ..
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: jar-artifacts
+          path: |
+            authService/authService/target/*.jar
+            clientService/clientService/target/*.jar
+            walletService/walletService/target/*.jar
+            orderService/orderService/target/*.jar
+            gatewayService/target/*.jar
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Run OWASP Dependency Check
+        run: |
+          # Install dependency-check
+          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dependency-check.zip
+          unzip dependency-check.zip
+          
+          # Check each service
+          ./dependency-check/bin/dependency-check.sh --project "BrokerX-AuthService" --scan authService/authService/target --format HTML --out reports/auth-security
+          ./dependency-check/bin/dependency-check.sh --project "BrokerX-ClientService" --scan clientService/clientService/target --format HTML --out reports/client-security
+          ./dependency-check/bin/dependency-check.sh --project "BrokerX-WalletService" --scan walletService/walletService/target --format HTML --out reports/wallet-security
+          ./dependency-check/bin/dependency-check.sh --project "BrokerX-OrderService" --scan orderService/orderService/target --format HTML --out reports/order-security
+          ./dependency-check/bin/dependency-check.sh --project "BrokerX-Gateway" --scan gatewayService/target --format HTML --out reports/gateway-security
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: reports/
+
+  deploy:
+    runs-on: [self-hosted, linux, vm-lab]
+    needs: [test, security-scan]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    environment:
+      name: production
+      url: http://your-vm-ip:8080
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: jar-artifacts
+
+      - name: Set up deployment directory
+        run: |
+          DEPLOY_DIR="/home/gha-runner/brokerx-microservices"
+          cd /home/gha-runner
+          
+          # Clone or update repository
+          if [ -d "$DEPLOY_DIR" ]; then
+            cd $DEPLOY_DIR
+            git pull origin ${{ github.ref_name }}
+          else
+            git clone ${{ github.repository_owner }}/${{ github.event.repository.name }} $DEPLOY_DIR
+            cd $DEPLOY_DIR
+          fi
+
+      - name: Create production environment file
+        run: |
+          cd /home/gha-runner/brokerx-microservices
+          cat > .env << EOF
+          # JWT Configuration
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          
+          # Email Configuration
+          EMAIL_USER=${{ secrets.EMAIL_USER }}
+          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          
+          # Database Paths (Production)
+          DB_PATH_AUTH=/home/gha-runner/brokerx-data/authdb
+          DB_PATH_CLIENT=/home/gha-runner/brokerx-data/clientdb
+          DB_PATH_WALLET=/home/gha-runner/brokerx-data/walletdb
+          DB_PATH_ORDER=/home/gha-runner/brokerx-data/orderdb
+          
+          # Monitoring
+          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          EOF
+
+      - name: Create data directories
+        run: |
+          sudo mkdir -p /home/gha-runner/brokerx-data
+          sudo chown -R gha-runner:gha-runner /home/gha-runner/brokerx-data
+
+      - name: Stop existing services
+        run: |
+          cd /home/gha-runner/brokerx-microservices
+          docker compose down --remove-orphans || true
+          docker compose -f docker-compose.monitoring.yml down || true
+
+      - name: Build and deploy services
+        run: |
+          cd /home/gha-runner/brokerx-microservices
+          
+          # Build all services
+          docker compose build --no-cache
+          
+          # Start infrastructure first (databases, monitoring)
+          docker compose -f docker-compose.monitoring.yml up -d
+          
+          # Wait for infrastructure to be ready
+          sleep 30
+          
+          # Start microservices
+          docker compose up -d
+          
+          echo "Deployment completed successfully!"
+
+      - name: Health check
+        run: |
+          sleep 60  # Wait for services to start
+          
+          # Check service health
+          echo "Checking Gateway health..."
+          curl -f http://localhost:8080/actuator/health || exit 1
+          
+          echo "Checking AuthService health..."
+          curl -f http://localhost:8081/actuator/health || exit 1
+          
+          echo "Checking ClientService health..."
+          curl -f http://localhost:8082/actuator/health || exit 1
+          
+          echo "Checking WalletService health..."
+          curl -f http://localhost:8083/actuator/health || exit 1
+          
+          echo "Checking OrderService health..."
+          curl -f http://localhost:8084/actuator/health || exit 1
+          
+          echo "All services are healthy!"
+
+      - name: Send deployment notification
+        if: success()
+        run: |
+          echo "✅ BrokerX Microservices deployed successfully!"
+          echo "🌐 Gateway: http://your-vm-ip:8080"
+          echo "📊 Grafana: http://your-vm-ip:3000"
+          echo "📈 Prometheus: http://your-vm-ip:9090"
+
+      - name: Cleanup on failure
+        if: failure()
+        run: |
+          cd /home/gha-runner/brokerx-microservices
+          docker compose down
+          docker compose -f docker-compose.monitoring.yml down
+          echo "❌ Deployment failed - services stopped"

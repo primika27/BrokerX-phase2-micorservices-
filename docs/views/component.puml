@@ -1,74 +1,87 @@
 @startuml
-title Component Diagram BrokerxApplication
+title Component Diagram - BrokerX Microservices Architecture
 
-package "Presentation Layer" {
+' === Gateway ===
+package "Gateway Service (:8080)" {
+  [GatewayConfig <<Configuration>>]
+  [JwtAuthFilter <<Filter>>]
+  [JwtService <<Service>>]
+  [SecurityConfig <<Config>>]
+}
+
+' === AuthService ===
+package "Auth Service (:8081)" {
   [AuthentificationController <<Controller>>]
-  [ClientController <<Controller>>]
-  [OrderController <<Controller>>]
-  [PageController <<Controller>>]
-  [PortefeuilleController <<Controller>>]
-}
-
-package "Application Layer" {
   [AuthentificationService <<Service>>]
+  [JwtService (Auth) <<Service>>]
+  [UserCredentialRepository <<Repository>>]
+  [UserCredential <<Entity>>]
+  [JavaMailSender <<External>>]
+  [Spring Security <<Framework>>]
+  [AuthDB (H2) <<Database>>]
+}
+
+' === ClientService ===
+package "Client Service (:8082)" {
+  [ClientController <<Controller>>]
   [ClientService <<Service>>]
-  [OrderService <<Service>>]
-  [PortefeuilleService <<Service>>]
-}
-
-package "Infrastructure Layer" {
   [ClientRepository <<Repository>>]
-  [OrderRepository <<Repository>>]
-  [PortefeuilleRepository <<Repository>>]
-  [JavaMailSender <<external>>]
-  [Spring Data JPA <<framework>>]
-  [Spring Security <<framework>>]
-  [Spring Boot Actuator <<framework>>]
-  [Database (H2/PostgreSQL) <<external>>]
-}
-
-package "Domain Layer" {
   [Client <<Entity>>]
-  [Order <<Entity>>]
-  [Portefeuille <<Entity>>]
-  [Transaction <<Entity>>]
+  [AuthClient (Feign) <<Client>>]
+  [FeignConfig <<Config>>]
+  [ClientDB (H2) <<Database>>]
 }
 
-[BrokerxApplication] --> [AuthentificationController]
-[BrokerxApplication] --> [ClientController]
-[BrokerxApplication] --> [OrderController]
-[BrokerxApplication] --> [PageController]
-[BrokerxApplication] --> [PortefeuilleController]
+' === WalletService ===
+package "Wallet Service (:8083)" {
+  [WalletController <<Controller>>]
+  [WalletService <<Service>>]
+  [WalletRepository <<Repository>>]
+  [Wallet <<Entity>>]
+  [WalletDB (H2) <<Database>>]
+}
 
-' Controllers use Services
-[AuthentificationController] --> [AuthentificationService]
-[ClientController] --> [ClientService]
-[OrderController] --> [OrderService]
-[PortefeuilleController] --> [PortefeuilleService]
-[PageController] --> [ClientService]
+' === OrderService ===
+package "Order Service (:8084)" {
+  [OrderController <<Controller>>]
+  [OrderService <<Service>>]
+  [OrderRepository <<Repository>>]
+  [TransactionRepository <<Repository>>]
+  [Order <<Entity>>]
+  [Transaction <<Entity>>]
+  [WalletServiceClient (Feign) <<Client>>]
+  [OrderDB (H2) <<Database>>]
+}
 
-' Services use Repositories
-[AuthentificationService] --> [ClientRepository]
-[AuthentificationService] --> [JavaMailSender]
+' === Relations Inter-Services ===
+[GatewayConfig] --> [AuthentificationController] : route /api/auth/**
+[GatewayConfig] --> [ClientController] : route /api/clients/**
+[GatewayConfig] --> [WalletController] : route /api/wallet/**
+[GatewayConfig] --> [OrderController] : route /api/orders/**
+
+' === Communication Feign ===
+[ClientService] --> [AuthClient (Feign)]
+[OrderService] --> [WalletServiceClient (Feign)]
+
+' === Service <-> Repository ===
+[AuthentificationService] --> [UserCredentialRepository]
 [ClientService] --> [ClientRepository]
+[WalletService] --> [WalletRepository]
 [OrderService] --> [OrderRepository]
-[OrderService] --> [PortefeuilleRepository]
-[PortefeuilleService] --> [PortefeuilleRepository]
+[OrderService] --> [TransactionRepository]
 
-' Repositories use JPA and Database
-[ClientRepository] --> [Spring Data JPA]
-[OrderRepository] --> [Spring Data JPA]
-[PortefeuilleRepository] --> [Spring Data JPA]
-[Spring Data JPA] --> [Database (H2/PostgreSQL)]
+' === Repository <-> Database ===
+[UserCredentialRepository] --> [AuthDB (H2)]
+[ClientRepository] --> [ClientDB (H2)]
+[WalletRepository] --> [WalletDB (H2)]
+[OrderRepository] --> [OrderDB (H2)]
+[TransactionRepository] --> [OrderDB (H2)]
 
-' Domain entities
-[ClientRepository] --> [Client]
-[OrderRepository] --> [Order]
-[PortefeuilleRepository] --> [Portefeuille]
-[OrderRepository] --> [Transaction]
-
-' External frameworks
-[Spring Security] ..> [BrokerxApplication]
-[Spring Boot Actuator] ..> [BrokerxApplication]
+' === External frameworks ===
+[Spring Security] ..> [AuthentificationService]
+[JavaMailSender] ..> [AuthentificationService]
+[FeignConfig] ..> [ClientService]
+[FeignConfig] ..> [OrderService]
+[JwtAuthFilter] ..> [JwtService]
 
 @enduml

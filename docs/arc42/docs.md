@@ -7,37 +7,44 @@ Ce document, basé sur le modèle **arc42**, décrit l'architecture microservice
 ## 1. Introduction et Objectifs
 
 ### Panorama des exigences
+L’application BrokerX est désormais une plateforme de courtage en ligne architecturée en microservices Java Spring Boot.
+Elle permet aux utilisateurs de :
 
----
+- S’inscrire et vérifier leur identité (MFA/OTP),
 
-## 1. Introduction et Objectifs
+- Gérer leur profil client,
 
-### Panorama des exigences
-L’application « BrokerX » est un prototype Java monolithique de courtage sécurisé permettant à ses clients de:
-- Passer des ordres 
-- Consulter leurs portefeuilles 
-- Recevoir exécutions et confirmations
-- Effectuer le règlement et la compensation des transactions 
+- Approvisionner un portefeuille virtuel,
 
-Elle comprend :  
-- L’utilisation de conteneurs avec Docker  
-- L’écriture et l’exécution de tests automatisés avec JUnit + Maven  
-- La combinaison d’outils modernes de développement (VS Code, Github/Gitlab, Docker)  
+- Passer des ordres d’achat et de vente,
 
-L’objectif de la première phase est de fournir un prototype monolithique fonctionnel, conteneurisé avec Docker, incluant des tests automatisés et un pipeline CI/CD de base.  
-Les phases futures évolueront vers des microservices puis une architecture orientée événements.
+- Consulter leur solde et historique de transactions.
+
+Le système est conçu pour illustrer les principes d’architecture distribuée, de conteneurisation, et d’intégration continue (CI/CD).
+Chaque service est indépendant, avec sa propre base de données H2, communiquant via des API REST et sécurisé par un API Gateway gérant les jetons JWT.
 
 ### Objectifs qualité
 | Priorité | Objectif qualité | Scénario |
 |----------|------------------|----------|
-| 1 | **Performance** | Latence de placement d’ordre ≤ 500 ms, débit ≥ 300 ordres/sec. Priorité absolue car la rapidité de placement d’ordre est critique pour un système de courtage. Même en mode prototype, la perception de rapidité est un facteur clé de réalisme. |
-| 2 | **Sécurité** | Deuxième priorité car l’application gère des données sensibles (identité, transactions financières). MFA obligatoire limite le risque de fraude. |
-| 3 | **Disponibilité** | Le prototype n’est pas en production mais doit rester disponible pour les démonstrations et les tests. Un objectif de 90% est réaliste dans un contexte académique. |
-| 4 | **Déployabilité** | Mise en place d’un pipeline CI/CD simple mais automatisé (tests unitaires + build Docker + déploiement) pour assurer fluidité des itérations. |
+| 1 | **Sécurité distribuée** | Tous les appels entre services passent par le Gateway pour validation du JWT et propagation sécurisée de l’identité (X-Authenticated-User). Le MFA reste obligatoire côté AuthService. Aucune API interne n’est exposée directement. |
+| 2 | **Performance inter-services** | Lors du placement d’un ordre, la communication OrderService → WalletService via Feign doit avoir une latence ≤ 100 ms. Le temps total de traitement d’un ordre complet (avec vérification et transaction) doit rester sous 500 ms. |
+| 3 | **Résilience et tolérance aux pannes** |En cas d’indisponibilité temporaire d’un service (ex. WalletService), les autres continuent à fonctionner sans crash. Un circuit breaker ou une gestion d’erreurs Feign permet de limiter les échecs en cascade. |
+| 4| **Déployabilité indépendante** |Chaque microservice doit être déployable et testable individuellement. Le pipeline CI/CD construit, teste et déploie chaque service dans un conteneur distinct orchestré par Docker Compose. |
+| 5| **Observabilité et traçabilité** | Les logs doivent inclure un trace ID ou correlation ID propagé par le Gateway pour suivre le cycle complet d’une requête entre microservices (Auth → Client → Wallet → Order).|
 
 Explication de la priorisation: 
 
-La priorisation des objectifs qualité reflète les besoins essentiels d’une application de courtage. La performance est placée en premier car la rapidité de traitement des ordres est critique pour la crédibilité du système, même en contexte académique. La sécurité arrive ensuite puisqu’il s’agit de protéger des données sensibles et d’instaurer la confiance grâce au MFA. La disponibilité est moins critique qu’en production mais nécessaire pour garantir des démonstrations et tests fiables (90% suffisent). Enfin, la déployabilité est priorisée en dernier : le pipeline CI/CD est un support à l’évolution et aux itérations rapides, mais il ne prime pas sur les exigences métier immédiates.
+La priorisation des objectifs qualité reflète les besoins essentiels d’une architecture microservices pour un système de courtage distribué :
+
+La sécurité distribuée est placée en premier car la plateforme repose désormais sur plusieurs services indépendants (Auth, Client, Wallet, Order). Chacun doit être protégé par le Gateway, qui valide les jetons JWT et assure l’isolation entre domaines fonctionnels.
+
+La performance inter-services vient ensuite : dans un environnement distribué, la rapidité ne dépend plus seulement du code, mais de la latence réseau et de la communication Feign entre services. Une faible latence est essentielle pour maintenir une expérience fluide lors du placement d’ordres.
+
+La résilience est désormais une priorité centrale : chaque service doit pouvoir continuer à fonctionner même si un autre est temporairement indisponible. Cela garantit la continuité des opérations et évite les pannes en cascade.
+
+La déployabilité indépendante est le moteur de l’agilité du système : chaque microservice peut être mis à jour, testé et redéployé sans impacter les autres, ce qui simplifie les itérations et le travail en équipe.
+
+Enfin, l’observabilité complète l’ensemble : elle assure la traçabilité des requêtes entre services, facilitant le diagnostic, le suivi de performance et la supervision du comportement global du système distribué.
 
 ### Parties prenantes
 - **Clients** : Investisseurs utilisant la plateforme 
@@ -246,22 +253,23 @@ Client 1─* Ordre
 -**Base de données** : H2 et PostgreSQL comme bases de données.
 - **Persistance** : Spring Data JPA (Java Persistence API) pour le mapping objet-relationnel et la gestion des entités, avec H2/Hibernate comme implémentation sous-jacente.
 
-![Component diagram](./component_phase1.png)
+![Component diagram](./ComponentDiagramphase2.png)
 
 ![activity diagram](./activity.png)
 
 ---
 
-## 4. Stratégie de solution
-| Problème | Approche de solution |
-|----------|---------------------|
-| **Infrastructure** | Adoption d’une architecture hexagonale DDD : la logique métier(entités, règles métiers) est séparé des interactions externes qui passent par des ports/adapteurs(REST, persistence, envoi des email) |
-| **Dépendance à une base de données** | Définition d’interfaces  pour les opérations de persistance des repositoires Spring Data JPA. Pas de couplage entre logique métier et repositoires. |
-| **Évolution ou changement de technologie de persistance** | Remplacement ou ajout d’un nouvel adaptateur (H2->PostgreSQL) sans modifier la logique métier ni les ports |
-| **Gestion des transactions** | Utilisation de Spring Data JPA pour gérer les transactions Spring garantissant... |
-| **Démarrage rapide et tests locaux** | Utilisation de H2 en mémoire pour le développement et les tests, permet protype rapide qui ne nécéssite aucune configuration complexe ni dépendance à une base externe |
-| **Exposition sécurisée des services** | Contrôleurs REST (adapters entrants) qui valident et transmettent les requêtes au domaine via les ports, en respectant les règles de sécurité et de validation |
-| **Envoi des emails de verification/notifications** | Intégration de Spring Mail (JavaMailSender) comme adaptateur sortant pour l’émission d’e-mails de vérification de compte et de notifications transactionnelles. |
+| **Problème**                                   | **Approche de solution**                                           |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Infrastructure distribuée**                  | Adoption d’une **architecture microservices** inspirée du modèle **hexagonal (DDD)** : chaque domaine métier (Auth, Client, Wallet, Order) est isolé dans un service autonome avec ses propres ports/adaptateurs (REST, Feign, JPA). La communication inter-services se fait via **HTTP (OpenFeign)** à travers le **Gateway**, garantissant une séparation claire entre la logique métier et l’infrastructure. |
+| **Sécurité centralisée** | Mise en place d’un **API Gateway (Spring Cloud Gateway)** servant de pare-feu applicatif. Il valide les **JWT**, propage les en-têtes d’authentification (`X-Authenticated-User`), et bloque tout accès direct aux services internes. Le **MFA (OTP)** est géré exclusivement par **AuthService**.   |
+| **Persistance indépendante**  | Chaque microservice dispose de sa **propre base de données H2** (authdb, clientdb, walletdb, orderdb), assurant une **autonomie complète** et évitant le couplage entre domaines. La persistance est gérée via **Spring Data JPA**, permettant un remplacement futur vers **PostgreSQL** sans changement du code métier.  |
+| **Communication inter-services**   | Utilisation de **Spring Cloud OpenFeign** pour les appels entre microservices (ex. `ClientService → AuthService`, `OrderService → WalletService`). Des en-têtes personnalisés (`X-Service-Call`) identifient les appels internes et permettent un routage sécurisé via le **Gateway**.  |
+| **Gestion des transactions locales**  | Chaque microservice gère ses **transactions localement** via Spring `@Transactional`. Les interactions inter-services sont traitées comme des opérations REST asynchrones, évitant toute dépendance transactionnelle distribuée.  |
+| **Résilience et tolérance aux pannes**  | Mise en place de mécanismes de **gestion d’erreurs Feign**, de **timeouts** et de **retours de repli** pour prévenir les pannes en cascade. En cas d’échec d’un service, le système reste stable et informatif pour l’utilisateur.  |
+| **Tests et rapidité de développement** | Utilisation de **H2** pour le développement et les tests locaux. Chaque microservice peut être exécuté indépendamment grâce à **Docker Compose**, assurant un prototypage rapide et un environnement reproductible.  |
+| **Notifications et communication utilisateur** | Envoi d’e-mails (vérification, OTP) via **JavaMailSender** dans `AuthService` et `ClientService`. Les transactions financières (dépôts, ordres) sont tracées dans `WalletService` à des fins d’audit.  |
+| **Déploiement et CI/CD**  | Chaque microservice possède son **Dockerfile**. Le pipeline **GitLab CI/CD** automatise les builds, tests et déploiements. L’orchestration complète est assurée par **docker-compose.yml**, garantissant un déploiement cohérent sur la VM de démonstration.   |
 
 ---
 
@@ -320,7 +328,7 @@ Du côté CI/CD, le code source est hébergé sur GitHub/GitLab, où un pipeline
 
 La communication externe se fait via le navigateur de l’utilisateur → brokerx-app (UI Thymeleaf et API REST), tandis que la persistance passe par JDBC vers la base de données interne. Les logs sont collectés sur la VM via stdout/stderr.
 
-![Diagramme de déployement](./deployement_phase1.png)
+![Diagramme de déployement](./deployentDiagramphase2.png)
 
 ## MUST HAVES: 
 

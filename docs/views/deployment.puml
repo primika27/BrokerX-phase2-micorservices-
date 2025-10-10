@@ -1,21 +1,21 @@
 @startuml
-title "Déploiement BrokerX (Dev + CI/CD)"
+title "Déploiement BrokerX - Architecture Microservices (Dev + CI/CD)"
 
 actor "Utilisateur (Navigateur)" as user
 
 ' Zone Dev/CI
 node "Espace Dev/CI" as devci {
   node "Machine Dev" as dev {
-    artifact "Code source\n(Spring Boot + JPA + Thymeleaf)" as src
+    artifact "Code source\n(Microservices Spring Boot)" as src
     artifact "docker-compose.yml\n(.env.dev / .env.prod)" as compose
-    component "Docker Desktop" as docker
+    component "Docker Desktop / Compose" as docker
   }
 
   node "GitHub" as gh {
-    node "Repository" as repo
-    node "Actions (CI)" as actions {
+    node "Repository BrokerX" as repo
+    node "GitHub Actions (CI)" as actions {
       artifact "Build Maven\nTests JUnit" as maven
-      artifact "Image Docker\nbrokerx:latest" as image
+      artifact "Image Docker\nbrokerx-* :latest" as image
       artifact "Test container\n/actuator/health" as healthcheck
     }
     node "Registry (optionnel)" as reg {
@@ -24,47 +24,100 @@ node "Espace Dev/CI" as devci {
   }
 }
 
-' Runtime
-node "VM Docker Host (démo/serveur)" as vm {
-  node "Réseau Docker" as net {
-    node "Container: brokerx-app" as app {
-      component "Spring Boot 3 (Java 21)\n- UI Thymeleaf\n- REST /api/*\n- Actuator /actuator/health\n- Spring Security (MFA)" as sb
-      component "H2 (file mode)" as h2
+' === Environnement d'exécution ===
+node "VM Docker Host (Démo / Serveur)" as vm {
+  node "Réseau Docker (bridge)" as net {
+
+    ' Gateway
+    node "Container: gateway-service (8080)" as gateway {
+      component "Spring Cloud Gateway\n+ JWT Filter\n+ Routing" as gw
+    }
+
+    ' Auth Service
+    node "Container: auth-service (8081)" as auth {
+      component "AuthService\n- JWT & MFA\n- Email OTP" as authapp
+      database "AuthDB (H2)" as authdb
+    }
+
+    ' Client Service
+    node "Container: client-service (8082)" as client {
+      component "ClientService\n- Inscription\n- Profil client" as clientapp
+      database "ClientDB (H2)" as clientdb
+    }
+
+    ' Wallet Service
+    node "Container: wallet-service (8083)" as wallet {
+      component "WalletService\n- Solde\n- Dépôts / Débits" as walletapp
+      database "WalletDB (H2)" as walletdb
+    }
+
+    ' Order Service
+    node "Container: order-service (8084)" as order {
+      component "OrderService\n- Ordres BUY/SELL\n- Transactions" as orderapp
+      database "OrderDB (H2)" as orderdb
     }
   }
 
-  folder "Volume persistant" as vol {
-    artifact "./data/brokerxdb.mv.db\n./data/brokerxdb.trace.db" as h2files
+  folder "Volumes persistants" as vol {
+    artifact "./data/authdb.mv.db"
+    artifact "./data/clientdb.mv.db"
+    artifact "./data/walletdb.mv.db"
+    artifact "./data/orderdb.mv.db"
   }
 
   node "Logs (stdout/stderr)" as logs
 }
 
-' Liaisons
-user --> app : HTTP 8080\n/ (UI), /api/*, /actuator/health
-app --> h2 : JDBC (embedded/file)
-h2 --> h2files : Fichiers DB (volume)
-app ..> logs : Logback
+' === Liaisons Utilisateur / Gateway ===
+user --> gw : HTTP 8080\n(UI / API via React/REST)
+gw --> authapp : /api/auth/**
+gw --> clientapp : /api/clients/**
+gw --> walletapp : /api/wallet/**
+gw --> orderapp : /api/orders/**
 
-' Flux CI/CD
+' === Communications internes Feign ===
+clientapp --> authapp : Feign (création credentials)
+orderapp --> walletapp : Feign (transactions financières)
+
+' === Liens DB & Volumes ===
+authapp --> authdb
+clientapp --> clientdb
+walletapp --> walletdb
+orderapp --> orderdb
+authdb --> vol
+clientdb --> vol
+walletdb --> vol
+orderdb --> vol
+
+' === CI/CD Flow ===
 dev --> repo : git push
 actions --> maven : mvn test / package
-maven --> image : docker build
+maven --> image : docker build brokerx-*
 image --> healthcheck : docker run + curl /actuator/health
 actions --> registry : push (optionnel)
 registry --> vm : pull (optionnel)
+dev --> vm : docker compose up -d
 
-' Déploiement
-dev --> vm : docker compose up -d\n(utilisation locale ou démo)
-' (Alternative CD) actions --> vm : Job CD (SSH + compose)\n(si activé)
-
-' Notes
-note right of app
-Exposition: 8080\nProfil: dev/prod via .env\nSanté: /actuator/health\nSécurité: session + MFA (OTP)
+' === Notes explicatives ===
+note right of gw
+**Gateway (8080)**  
+- Point d’entrée unique  
+- Validation JWT & routage  
+- Ajout headers X-Authenticated-User  
 end note
 
-note bottom of h2
-H2 en mode fichier (jdbc:h2:file:./data/brokerxdb)\nVolume persistant monté dans le container
+note bottom of wallet
+**WalletService**  
+- Gère les dépôts, retraits et soldes  
+- Appelé par OrderService via Feign  
+end note
+
+note bottom of vm
+Chaque microservice possède :  
+- Un conteneur indépendant  
+- Sa propre base H2 (Database per Service)  
+- Communication HTTP via le Gateway  
+- Tests santé : `/actuator/health`  
 end note
 
 @enduml

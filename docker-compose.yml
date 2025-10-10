@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  # ========================
+  # GATEWAY SERVICE
+  # ========================
+  gateway:
+    build:
+      context: ./gatewayService
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - auth-service
+      - client-service
+      - wallet-service
+      - order-service
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========================
+  # AUTH SERVICE
+  # ========================
+  auth-service:
+    build:
+      context: ./authService/authService
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/authdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+    volumes:
+      - auth-data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========================
+  # CLIENT SERVICE
+  # ========================
+  client-service:
+    build:
+      context: ./clientService/clientService
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/clientdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+    volumes:
+      - client-data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========================
+  # WALLET SERVICE
+  # ========================
+  wallet-service:
+    build:
+      context: ./walletService/walletService
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/walletdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+    volumes:
+      - wallet-data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ========================
+  # ORDER SERVICE
+  # ========================
+  order-service:
+    build:
+      context: ./orderService/orderService
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/orderdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+    volumes:
+      - order-data:/data
+    depends_on:
+      - wallet-service
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  auth-data:
+    driver: local
+  client-data:
+    driver: local
+  wallet-data:
+    driver: local
+  order-data:
+    driver: local
+
+networks:
+  brokerx-network:
+    driver: bridge
