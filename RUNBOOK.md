@@ -11,7 +11,7 @@ Procédures essentielles pour démarrer, surveiller et dépanner les microservic
 - WalletService (8083) - Portefeuilles
 - OrderService (8084) - Ordres de trading
 
-## 🚀 Démarrage des Services
+## Démarrage des Services
 
 ### Option 1: Script Automatique (Recommandé)
 ```batch
