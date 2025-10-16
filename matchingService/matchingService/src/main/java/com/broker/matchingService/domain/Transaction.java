@@ -21,6 +21,9 @@ public class Transaction {
     private double amount;
     
     @Column(nullable = false)
+    private int portefeuilleId;
+    
+    @Column(nullable = false)
     private java.time.LocalDateTime dateTransaction = java.time.LocalDateTime.now();
     
     @Column(length = 500)
@@ -30,18 +33,20 @@ public class Transaction {
     public Transaction() {}
 
     // Constructeur pour les ordres
-    public Transaction(int orderId, TransactionType type, double amount, String description) {
+    public Transaction(int orderId, TransactionType type, double amount, int portefeuilleId, String description) {
         this.orderId = orderId;
         this.type = type;
         this.amount = amount;
+        this.portefeuilleId = portefeuilleId;
         this.description = description;
     }
     
     // Constructeur pour dépôts/retraits (sans orderId)
-    public Transaction(TransactionType type, double amount, String description) {
+    public Transaction(TransactionType type, double amount, int portefeuilleId, String description) {
         this.orderId = null;  // Pas d'ordre pour dépôts/retraits
         this.type = type;
         this.amount = amount;
+        this.portefeuilleId = portefeuilleId;
         this.description = description;
     }
 

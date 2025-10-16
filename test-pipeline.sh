@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🧪 Début des tests du pipeline BrokerX..."
+echo "Début des tests du pipeline BrokerX..."
 
 # Configuration
 GATEWAY_URL="http://localhost:8080"

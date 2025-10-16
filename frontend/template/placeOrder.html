@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Placer une Commande - BrokerX</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .order-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            width: 500px;
+        }
+        .order-container h2 {
+            margin-bottom: 25px;
+            text-align: center;
+            color: #333;
+        }
+        .order-container label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-weight: bold;
+            color: #555;
+        }
+        .order-container select,
+        .order-container input {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .order-container button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .order-container button:hover {
+            background-color: #0056b3;
+        }
+        .back-btn {
+            background-color: #6c757d !important;
+        }
+        .back-btn:hover {
+            background-color: #545b62 !important;
+        }
+        .price-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+        .price-info h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .price-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .total-cost {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="order-container">
+        <h2>Passer une Commande - BrokerX</h2>
+        <form id="placeOrderForm">
+            <label for="orderType">Type d'ordre :</label>
+            <select name="orderType" id="orderType" required onchange="updateSymbolOptions()">
+                <option value="">--Sélectionnez le type--</option>
+                <option value="BUY">Acheter</option>
+                <option value="SELL">Vendre</option>
+            </select>
+
+            <label for="symbol">Choisissez un symbole :</label>
+            <select name="symbol" id="symbol" required disabled onchange="updatePriceInfo()">
+                <option value="">--Sélectionnez d'abord le type d'ordre--</option>
+            </select>
+
+            <label for="quantity">Quantité :</label>
+            <input type="number" name="quantity" id="quantity" placeholder="Nombre d'actions" required min="1" onchange="updatePriceInfo()">
+
+            <!-- Info sur le prix -->
+            <div id="priceInfo" class="price-info" style="display: none;">
+                <h4>Détails de la transaction</h4>
+                <p><strong>Prix par action :</strong> <span id="unitPrice">0.00</span>€</p>
+                <p><strong>Quantité :</strong> <span id="selectedQuantity">0</span></p>
+                <p class="total-cost"><strong>Coût total :</strong> <span id="totalCost">0.00</span>€</p>
+            </div>
+
+            <button type="submit" id="submitBtn">Passer la Commande</button>
+            <button type="button" class="back-btn" onclick="window.location.href='/dashboard'">Retour au Dashboard</button>
+        </form>
+    </div>
+
+    <script>
+        // Prix hard codés pour tous les ETFs
+        const ETF_PRICES = {
+            "SPY": { name: "S&P 500 ETF", price: 445.50 },
+            "IVV": { name: "iShares S&P 500 ETF", price: 445.20 },
+            "VOO": { name: "Vanguard S&P 500 ETF", price: 445.80 },
+            "VTI": { name: "Vanguard Total Stock Market ETF", price: 265.40 },
+            "QQQ": { name: "Invesco QQQ Trust", price: 380.75 },
+            "VEA": { name: "Vanguard FTSE Developed Markets ETF", price: 51.20 },
+            "VWO": { name: "Vanguard FTSE Emerging Markets ETF", price: 42.85 },
+            "AGG": { name: "iShares Core U.S. Aggregate Bond ETF", price: 101.50 },
+            "BND": { name: "Vanguard Total Bond Market ETF", price: 73.25 },
+            "IWM": { name: "iShares Russell 2000 ETF", price: 220.30 },
+            "EFA": { name: "iShares MSCI EAFE ETF", price: 79.90 }
+        };
+
+    let userHoldings = {};
+    let confirmStep = false; // etape 1: afficher les détails, étape 2: confirmer
+
+        // Récupère les holdings de l'utilisateur au chargement de la page
+        window.onload = function() {
+            fetchUserHoldings();
+        };
+
+        function fetchUserHoldings() {
+            fetch('/api/orders/holdings', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                userHoldings = data;
+            })
+            .catch(error => {
+                console.error('Erreur lors de la récupération des holdings:', error);
+                userHoldings = {};
+            });
+        }
+
+        function updateSymbolOptions() {
+            const orderType = document.getElementById('orderType').value;
+            const symbolSelect = document.getElementById('symbol');
+            const priceInfo = document.getElementById('priceInfo');
+            
+            // Reset du dropdown
+            symbolSelect.innerHTML = '';
+            symbolSelect.disabled = true;
+            priceInfo.style.display = 'none';
+            resetConfirmState();
+            
+            if (orderType === 'BUY') {
+                // Pour acheter : affiche tous les ETFs
+                symbolSelect.disabled = false;
+                symbolSelect.innerHTML = '<option value="">--Sélectionnez un symbole--</option>';
+                
+                for (const [symbol, info] of Object.entries(ETF_PRICES)) {
+                    const option = document.createElement('option');
+                    option.value = symbol;
+                    option.textContent = `${symbol} - ${info.name} (${info.price}€)`;
+                    symbolSelect.appendChild(option);
+                }
+                
+            } else if (orderType === 'SELL') {
+                // Pour vendre : affiche seulement les actions possédées (vide pour l'instant)
+                symbolSelect.innerHTML = '<option value="">--Vente temporairement désactivée--</option>';
+            }
+        }
+
+        function updatePriceInfo() {
+            const symbol = document.getElementById('symbol').value;
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const priceInfo = document.getElementById('priceInfo');
+            
+            if (symbol && quantity > 0 && ETF_PRICES[symbol]) {
+                const unitPrice = ETF_PRICES[symbol].price;
+                const totalCost = unitPrice * quantity;
+                
+                document.getElementById('unitPrice').textContent = unitPrice.toFixed(2);
+                document.getElementById('selectedQuantity').textContent = quantity;
+                document.getElementById('totalCost').textContent = totalCost.toFixed(2);
+                
+                priceInfo.style.display = 'block';
+            } else {
+                priceInfo.style.display = 'none';
+            }
+        }
+
+        function resetConfirmState() {
+            confirmStep = false;
+            const btn = document.getElementById('submitBtn');
+            if (btn) btn.textContent = 'Passer la Commande';
+        }
+
+        // Réinitialiser l'état de confirmation si l'utilisateur modifie un champ
+        document.getElementById('orderType').addEventListener('change', resetConfirmState);
+        document.getElementById('symbol').addEventListener('change', function() { updatePriceInfo(); resetConfirmState(); });
+        document.getElementById('quantity').addEventListener('input', function() { updatePriceInfo(); resetConfirmState(); });
+
+        document.getElementById('placeOrderForm').addEventListener('submit', function(e) {
+            e.preventDefault(); 
+            
+            const symbol = document.getElementById('symbol').value;
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const orderType = document.getElementById('orderType').value;
+            const priceInfo = document.getElementById('priceInfo');
+            const btn = document.getElementById('submitBtn');
+            
+            if (!symbol || !quantity || !orderType) {
+                alert('Veuillez remplir tous les champs.');
+                return;
+            }
+            
+            if (quantity <= 0) {
+                alert('La quantité doit être positive.');
+                return;
+            }
+
+            // Étape 1: si pas encore confirmé, afficher les détails (déjà géré) et changer le bouton en "Confirmer"
+            updatePriceInfo();
+            if (!confirmStep) {
+                priceInfo.style.display = 'block';
+                const isBuy = orderType === 'BUY';
+                btn.textContent = isBuy ? "Confirmer l'achat" : 'Confirmer la vente';
+                confirmStep = true;
+                return; // attendre le second clic
+            }
+
+            // Étape 2: confirmation finale avec garde-fou pour gros montants
+            if (ETF_PRICES[symbol]) {
+                const total = ETF_PRICES[symbol].price * quantity;
+                if (total > 1000) {
+                    if (!confirm(`Confirmez-vous cette transaction de ${total.toFixed(2)}€ ?`)) {
+                        return;
+                    }
+                }
+            }
+            
+            fetch('/api/orders/placeOrder', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `symbol=${encodeURIComponent(symbol)}&quantity=${encodeURIComponent(quantity)}&orderType=${encodeURIComponent(orderType)}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                const text = (data || '').trim();
+                if (text.toUpperCase().startsWith('SUCCESS')) {
+                    alert(text.replace(/^SUCCESS:\s*/, 'Succès: '));
+                    window.location.replace('/dashboard?t=' + Date.now());
+                } else if (text.toUpperCase().startsWith('ERROR')) {
+                    alert(text.replace(/^ERROR:\s*/, 'Erreur: '));
+                } else {
+                    alert('Réponse inattendue: ' + text);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Erreur lors du placement de la commande. Veuillez réessayer.');
+            });
+        });
+    </script>
+</body>
+</html>

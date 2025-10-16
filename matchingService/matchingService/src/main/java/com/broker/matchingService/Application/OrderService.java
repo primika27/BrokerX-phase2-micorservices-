@@ -1,6 +1,5 @@
 package com.broker.orderService.Application;
 
-import com.broker.orderService.infrastructure.client.ClientServiceClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,9 +28,6 @@ public class OrderService {
     @Autowired
     private WalletServiceClient walletServiceClient;
 
-    @Autowired
-    private ClientServiceClient clientServiceClient;
-
 
     // Acheter des actions
     
@@ -39,10 +35,10 @@ public class OrderService {
     public boolean acheterAction(String clientEmail, String symbol, double price, int quantity) {
         try {
             double total = price * quantity;
-
+            
             // 1. Vérifier le solde du wallet avant de créer l'ordre
             ResponseEntity<Double> balanceResponse = walletServiceClient.getBalance(clientEmail);
-            if (balanceResponse == null || !balanceResponse.getStatusCode().is2xxSuccessful() || balanceResponse.getBody() == null) {
+            if (balanceResponse == null || balanceResponse.getBody() == null) {
                 System.err.println("Impossible de récupérer le solde du wallet pour " + clientEmail);
                 return false;
             }
@@ -59,18 +55,9 @@ public class OrderService {
                 System.err.println("Échec du débit du wallet pour " + clientEmail);
                 return false;
             }
-
-            // 3. Get clientId from clientService
-            ResponseEntity<Integer> clientResponse = clientServiceClient.getByEmail(clientEmail);
-            if (clientResponse == null || !clientResponse.getStatusCode().is2xxSuccessful() || clientResponse.getBody() == null) {
-                System.err.println("Impossible de récupérer le clientID pour " + clientEmail);
-                return false;
-            }
-            int clientId = clientResponse.getBody();
             
-            // 4. Créer l'ordre après débit réussi
+            // 3. Créer l'ordre après débit réussi
             Order order = new Order();
-            order.setClientId(clientId);
             order.setSymbol(symbol);
             order.setPrice(price);
             order.setQuantity(quantity);
@@ -78,11 +65,12 @@ public class OrderService {
             order.setOrderType("BUY");
             Order savedOrder = orderRepository.save(order);
 
-            // 5. Créer la transaction pour l'audit trail
+            // 4. Créer la transaction pour l'audit trail
             Transaction transaction = new Transaction(
                 savedOrder.getOrderId(),
                 TransactionType.ORDER,
-                total,
+                total, 
+                0, // On peut mettre 0 ou un ID générique puisqu'on utilise l'email maintenant
                 String.format("Achat %d actions %s à %.2f$ par %s", quantity, symbol, price, clientEmail)
             );
             transactionRepository.save(transaction);

@@ -57,7 +57,9 @@ public class OrderController {
         boolean success = orderService.acheterAction(clientEmail, symbol, price, quantity);
         
         if (success) {
-            return ResponseEntity.ok("Order processed by OrderController");
+            double total = price * quantity;
+            return ResponseEntity.ok(String.format("Order placed successfully for %d shares of %s at %.2f$ (Total: %.2f$)", 
+                quantity, symbol, price, total));
         } else {
             return ResponseEntity.badRequest().body("Order failed. Check your wallet balance or try again.");
         }

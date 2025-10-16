@@ -18,6 +18,7 @@ services:
       - client-service
       - wallet-service
       - order-service
+      - matching-service
     networks:
       - brokerx-network
     healthcheck:
@@ -47,7 +48,7 @@ services:
     networks:
       - brokerx-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,6 +129,29 @@ services:
       retries: 3
       start_period: 60s
 
+  # ========================
+  # MATCHING SERVICE
+  # ========================
+  matching-service:
+    build:
+      context: ./matchingService/matchingService
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/matchingdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+    volumes:
+      - matching-data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
 volumes:
   auth-data:
     driver: local
@@ -136,6 +160,8 @@ volumes:
   wallet-data:
     driver: local
   order-data:
+    driver: local
+  matching-data:
     driver: local
 
 networks:

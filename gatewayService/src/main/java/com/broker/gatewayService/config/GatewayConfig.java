@@ -38,6 +38,11 @@ public class GatewayConfig {
                 .filters(f -> f.filter(jwtAuthFilter))
                 .uri("http://localhost:8084"))
 
+            // Matching service routes
+            .route("matching_service", r -> r.path("/api/matching/**")
+                .filters(f -> f.filter(jwtAuthFilter))
+                .uri("http://localhost:8085"))
+
             .build();
     }
 

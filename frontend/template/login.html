@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Page de Connexion - BrokerX</title>
+    <style>
+        .title {
+            text-align: center;
+            color: #333;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .login-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .login-container h2 {
+            margin-bottom: 20px;
+        }
+        .login-container input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .login-container button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .login-container button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+    <h2 class="title">Connexion à BrokerX</h2>
+    <form id="loginForm">
+        <input type="text" name="email" placeholder="Email" required>
+        <input type="password" name="motDePasse" placeholder="Mot de passe" required>
+        <button type="submit">Se connecter</button>
+    </form>
+    <div id="error" style="color:red; margin-top:10px;"></div>
+
+    <p style="text-align:center; margin-top:15px;">
+        <a href="/register" style="color:#4680dd; text-decoration:none;">Pas encore membre ? Créer un compte</a>
+    </p>
+</div>
+<script>
+const loginForm = document.getElementById('loginForm');
+const errorDiv = document.getElementById('error');
+
+loginForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const email = document.querySelector('input[name="email"]').value;
+    const motDePasse = document.querySelector('input[name="motDePasse"]').value;
+
+    const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `email=${encodeURIComponent(email)}&motDePasse=${encodeURIComponent(motDePasse)}`
+    });
+    const text = await response.text();
+
+    if (text === 'MFA_REQUIRED') {
+        // Show OTP input
+        showOtpInput(email);
+    } else if (text === 'SUCCESS' || text === 'Login successful for: ' + email) {
+        window.location.href = '/dashboard';
+    } else {
+        errorDiv.innerText = 'Identifiants invalides ou compte non activé.';
+    }
+});
+
+function showOtpInput(email) {
+    // Remove login form
+    // prevent duplicates
+    if (document.getElementById('otpForm')) {
+        return; // OTP form already shown
+    }
+
+    loginForm.style.display = 'none';
+
+    // Message OTP envoyé
+    const otpMsg = document.createElement('div');
+    otpMsg.style.color = 'green';
+    otpMsg.style.marginBottom = '10px';
+    otpMsg.innerText = 'Un code a été envoyé à votre email. Veuillez le saisir ci-dessous :';
+    loginForm.parentNode.insertBefore(otpMsg, errorDiv);
+
+    // Create OTP form
+    const otpForm = document.createElement('form');
+    otpForm.id = 'otpForm';
+    otpForm.innerHTML = `
+        <input type="hidden" name="email" value="${email}">
+        <input type="text" name="otp" placeholder="Code OTP (6 chiffres)" pattern="\\d{6}" maxlength="6" required>
+        <button type="submit">Valider</button>
+    `;
+    loginForm.parentNode.insertBefore(otpForm, errorDiv);
+
+    otpForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const otp = otpForm.querySelector('input[name="otp"]').value;
+
+        const response = await fetch('/api/auth/verify-otp', {
+            method: 'POST',
+            credentials: 'include', //  pour garder la session
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`
+        });
+        const text = await response.text();
+
+        if (text === 'LOGIN_SUCCESS') {
+            window.location.href = '/dashboard';
+        } else {
+            errorDiv.innerText = 'OTP invalide. Veuillez réessayer.';
+        }
+    });
+}
+</script>
+</body>
+</html>

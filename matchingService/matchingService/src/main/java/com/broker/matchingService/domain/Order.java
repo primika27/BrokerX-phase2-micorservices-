@@ -76,11 +76,6 @@ public class Order {
         this.status = status;
     }
 
-    public void setClientId(int clientId) {
-        this.clientId = clientId;
-    }
-    public int getClientId() {
-        return clientId;
-    }
+
     
 }

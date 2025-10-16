@@ -143,7 +143,7 @@ curl http://localhost:8084/actuator/health  # OrderService
 - **Métriques Prometheus**: `/actuator/prometheus`
 - **Info de l'application**: `/actuator/info`
 
-## 🔧 Dépannage
+## Dépannage
 
 ### Pipeline Fails
 

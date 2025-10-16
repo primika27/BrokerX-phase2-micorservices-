@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - BrokerX</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #66eacb 0%, #55acd2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px 32px;
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-info span {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #c53030;
+            transform: translateY(-2px);
+        }
+
+        /* Balance Card */
+        .balance-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 32px;
+            color: white;
+            box-shadow: 0 20px 40px rgba(79, 172, 254, 0.3);
+        }
+
+        .balance-card h3 {
+            font-size: 16px;
+            font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .balance-amount {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .refresh-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Actions */
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .action-btn {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            text-decoration: none;
+            color: #2d3748;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            border: 2px solid transparent;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        }
+
+        .deposit-btn:hover {
+            border-color: #48bb78;
+            color: #48bb78;
+        }
+
+        .trade-btn:hover {
+            border-color: #4299e1;
+            color: #4299e1;
+        }
+
+        .holdings-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .holdings-card h3 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 24px;
+        }
+
+        .holdings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .holdings-table th,
+        .holdings-table td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .holdings-table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .holdings-table td {
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .holdings-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            color: #718096;
+        }
+
+        .loading::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e2e8f0;
+            border-top: 2px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+    
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .balance-amount {
+                font-size: 36px;
+            }
+
+            .actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 BrokerX Dashboard</h1>
+            <div class="user-info">
+                <span sec:authentication="name">Utilisateur</span>
+                <a href="/logout" class="logout-btn">Déconnexion</a>
+            </div>
+        </div>
+
+        <div class="balance-card">
+            <h3>Solde du Portefeuille</h3>
+            <div class="balance-amount" id="currentBalance">
+                <div class="loading">Chargement du solde...</div>
+            </div>
+            <button class="refresh-btn" onclick="refreshBalance()">
+                🔄 Actualiser
+            </button>
+        </div>
+
+        <div class="actions">
+            <a href="/deposit" class="action-btn deposit-btn">
+                💰 Déposer des Fonds
+            </a>
+            <a href="/placeOrder" class="action-btn trade-btn">
+                📈 Passer une Commande
+            </a>
+        </div>
+
+        <div class="holdings-card">
+            <h3>📊 Mes Actions</h3>
+            <div id="holdingsContainer">
+                <div class="loading">Chargement des holdings...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        function refreshBalance() {
+            const balanceElement = document.getElementById('currentBalance');
+            balanceElement.innerHTML = '<div class="loading">Actualisation...</div>';
+            
+            fetch('/api/portefeuille/balance?t=' + Date.now(), {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-cache'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau');
+                }
+                return response.json();
+            })
+            .then(data => {
+                balanceElement.textContent = new Intl.NumberFormat('fr-FR', {
+                    style: 'currency',
+                    currency: 'EUR'
+                }).format(data);
+            })
+            .catch(error => {
+                console.error('Erreur lors de la récupération du solde:', error);
+                balanceElement.innerHTML = '<span style="color: #e53e3e;">Erreur de chargement</span>';
+            });
+        }
+
+        // Fonction pour récupérer les holdings
+        function refreshHoldings() {
+            const container = document.getElementById('holdingsContainer');
+            container.innerHTML = '<div class="loading">Actualisation...</div>';
+            
+            fetch('/api/orders/holdings?t=' + Date.now(), {
+                method: 'GET',
+                credentials: 'include',
+                cache: 'no-cache'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur réseau');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (Object.keys(data).length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📈</div>
+                            <p>Aucune action possédée</p>
+                            <p style="font-size: 14px; margin-top: 8px; opacity: 0.7;">
+                                Commencez par passer votre première commande !
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    let html = '<table class="holdings-table">';
+                    html += '<thead><tr><th>Symbole</th><th>Quantité</th><th>Actions</th></tr></thead><tbody>';
+                    
+                    for (const [symbol, quantity] of Object.entries(data)) {
+                        html += `
+                            <tr>
+                                <td><strong>${symbol}</strong></td>
+                                <td>${quantity}</td>
+                                <td>
+                                    <button onclick="sellStock('${symbol}', ${quantity})" 
+                                            style="background: #e53e3e; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                        Vendre
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la récupération des holdings:', error);
+                container.innerHTML = '<div style="color: #e53e3e; text-align: center; padding: 24px;">Erreur de chargement des holdings</div>';
+            });
+        }
+
+        // Fonction pour vendre des actions
+        function sellStock(symbol, maxQuantity) {
+            const quantity = prompt(`Combien d'actions ${symbol} voulez-vous vendre ? (Max: ${maxQuantity})`);
+            if (quantity && !isNaN(quantity) && quantity > 0 && quantity <= maxQuantity) {
+                window.location.href = `/placeOrder?symbol=${symbol}&type=SELL&quantity=${quantity}`;
+            }
+        }
+
+        // Charger les données au démarrage
+        window.addEventListener('load', function() {
+            refreshBalance();
+            refreshHoldings();
+        });
+
+        // Rafraîchir automatiquement toutes les 30 secondes
+        setInterval(function() {
+            refreshBalance();
+            refreshHoldings();
+        }, 30000);
+    </script>
+</body>
+</html>
