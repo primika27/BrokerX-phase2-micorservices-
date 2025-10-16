@@ -28,6 +28,7 @@ public class JwtAuthFilter implements GatewayFilter {
 
         // Allow internal service calls
         String serviceCallHeader = exchange.getRequest().getHeaders().getFirst("X-Service-Call");
+        System.out.println("X-Service-Call header: " + serviceCallHeader);
         if (serviceCallHeader != null && !serviceCallHeader.isEmpty()) {
             System.out.println("Appel interne détecté : " + serviceCallHeader);
             // Pour les appels internes, ajouter un header générique
