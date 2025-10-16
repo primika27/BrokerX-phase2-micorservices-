@@ -15,6 +15,9 @@ import com.broker.orderService.infrastructure.repo.OrderRepository;
 import com.broker.orderService.infrastructure.repo.TransactionRepository;
 import com.broker.orderService.infrastructure.client.WalletServiceClient;
 import org.springframework.http.ResponseEntity;
+import com.broker.orderService.service.OrderMessageProducer; // Import the producer
+import com.broker.orderService.dto.OrderDto; // Import the DTO
+
 
 @Service
 @Transactional
@@ -31,6 +34,9 @@ public class OrderService {
 
     @Autowired
     private ClientServiceClient clientServiceClient;
+
+    @Autowired // Inject the producer
+    private OrderMessageProducer orderMessageProducer;
 
 
     // Acheter des actions
@@ -69,12 +75,12 @@ public class OrderService {
             int clientId = clientResponse.getBody();
             
             // 4. Créer l'ordre après débit réussi
-            Order order = new Order();
+            Order order = new Order(); // This is your domain.Order
             order.setClientId(clientId);
             order.setSymbol(symbol);
             order.setPrice(price);
             order.setQuantity(quantity);
-            order.setStatus(1); // exécuté
+            order.setStatus(1); // exécuté - This status might need review for pending matching
             order.setOrderType("BUY");
             Order savedOrder = orderRepository.save(order);
 
@@ -87,6 +93,15 @@ public class OrderService {
             );
             transactionRepository.save(transaction);
             
+            // 6. Send order to matching service via RabbitMQ
+            OrderDto orderDto = new OrderDto(); // This is the DTO for RabbitMQ
+            orderDto.setOrderId(String.valueOf(savedOrder.getOrderId())); // Assuming getOrderId returns int
+            orderDto.setStockSymbol(savedOrder.getSymbol());
+            orderDto.setQuantity(savedOrder.getQuantity());
+            orderDto.setPrice(savedOrder.getPrice());
+            orderDto.setOrderType(savedOrder.getOrderType());
+            orderMessageProducer.sendNewOrderToMatchingService(orderDto);
+
             System.out.println("Achat réussi pour " + clientEmail + ": " + quantity + " " + symbol + " à " + price + "$ (Total: " + total + "$)");
             return true;
             
@@ -96,97 +111,4 @@ public class OrderService {
             return false;
         }
     }
-
-//  @Transactional
-//    public boolean vendreAction(int clientId, String symbol, double price, int quantity) {
-//     try {
-       
-//         Map<String, Integer> holdings = getClientHoldings(clientId);
-//         int owned = holdings.getOrDefault(symbol, 0);
-//         if (owned < quantity) {
-//             return false; 
-//         }
-
-//         double total = price * quantity;
-//         //portefeuille.setSolde(portefeuille.getSolde() + total);
-
-
-        
-//         // Créer l'ordre SELL correctement avec clientId et status
-//         Order order = new Order();
-//         order.setSymbol(symbol);
-//         order.setPrice(price);
-//         order.setQuantity(quantity);
-//         order.setStatus(1); // exécuté
-//         order.setOrderType("SELL");
-//         Order savedOrder = orderRepository.save(order);
-        
-//         // Créer une transaction pour l'audit trail
-//         String description = String.format("Vente %d actions %s à %.2f€", quantity, symbol, price);
-//         Transaction transaction = new Transaction(
-//             savedOrder.getOrderId(),
-//             TransactionType.ORDER,
-//             total, clientId,
-//             description
-//         );
-//         transactionRepository.save(transaction);
-
-//         return true;
-//     } catch (Exception e) {
-//         System.err.println("Erreur vendreAction: " + e.getMessage());
-//         return false;
-//     }
-// }
-
-    public boolean passerOrdre(String clientEmail, String symbol, double price, int quantity) {
-        return acheterAction(clientEmail, symbol, price, quantity);
-    }
-
-  
-    public void annulerOrdre(int orderId) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
-        orderOpt.ifPresent(orderRepository::delete);
-    }
-
-    public void modifierOrdre(int orderId, double newPrice, int newQuantity) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
-        if (orderOpt.isPresent()) {
-            Order order = orderOpt.get();
-            order.setPrice(newPrice);
-            order.setQuantity(newQuantity);
-            orderRepository.save(order);
-
-        }
-    }
-
-    
-    // public Map<String, Integer> getClientHoldings(int clientId) {
-    //     Map<String, Integer> holdings = new HashMap<>();
-        
-    //     try {
-    //         List<Order> orders = orderRepository.findAll();
-            
-    //         for (Order order : orders) {
-    //             if (order.getClientId() == clientId && order.getStatus() == 1) { // Ordres exécutés
-    //                 String symbol = order.getSymbol();
-    //                 int quantity = order.getQuantity();
-                    
-    //                 if ("BUY".equals(order.getOrderType())) {
-    //                     holdings.put(symbol, holdings.getOrDefault(symbol, 0) + quantity);
-    //                 } else if ("SELL".equals(order.getOrderType())) {
-    //                     holdings.put(symbol, holdings.getOrDefault(symbol, 0) - quantity);
-    //                 }
-    //             }
-    //         }
-            
-            
-    //         holdings.entrySet().removeIf(entry -> entry.getValue() <= 0);
-            
-    //     } catch (Exception e) {
-    //         System.err.println("Erreur getClientHoldings: " + e.getMessage());
-    //     }
-        
-    //     return holdings;
-    // }
-
 }

@@ -106,64 +106,79 @@ services:
   # ========================
   # ORDER SERVICE
   # ========================
-  order-service:
-    build:
-      context: ./orderService/orderService
-      dockerfile: Dockerfile
-    ports:
-      - "8084:8084"
-    environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/orderdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
-    volumes:
-      - order-data:/data
-    depends_on:
-      - wallet-service
-    networks:
-      - brokerx-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
+        order-service:
+          build:
+            context: ./orderService/orderService
+            dockerfile: Dockerfile
+          ports:
+            - "8084:8084"
+          environment:
+            - JWT_SECRET=${JWT_SECRET}
+            - SPRING_PROFILES_ACTIVE=docker
+            - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/orderdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+            - SPRING_RABBITMQ_HOST=rabbitmq
+          volumes:
+            - order-data:/data
+          depends_on:
+            - wallet-service
+            - rabbitmq
+          networks:
+            - brokerx-network
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
   # ========================
   # MATCHING SERVICE
   # ========================
-  matching-service:
-    build:
-      context: ./matchingService/matchingService
-      dockerfile: Dockerfile
-    ports:
-      - "8085:8085"
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/matchingdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
-    volumes:
-      - matching-data:/data
-    networks:
-      - brokerx-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-volumes:
-  auth-data:
-    driver: local
-  client-data:
-    driver: local
-  wallet-data:
-    driver: local
-  order-data:
-    driver: local
-  matching-data:
-    driver: local
-
+        matching-service:
+          build:
+            context: ./matchingService/matchingService
+            dockerfile: Dockerfile
+          ports:
+            - "8085:8085"
+          environment:
+            - SPRING_PROFILES_ACTIVE=docker
+            - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/matchingdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
+            - SPRING_RABBITMQ_HOST=rabbitmq
+          volumes:
+            - matching-data:/data
+          depends_on:
+            - rabbitmq
+          networks:
+            - brokerx-network
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
+  
+        rabbitmq:
+          image: rabbitmq:3-management
+          hostname: rabbitmq
+          ports:
+            - "5672:5672" # AMQP protocol port
+            - "15672:15672" # Management UI port
+          environment:
+            RABBITMQ_DEFAULT_USER: guest
+            RABBITMQ_DEFAULT_PASS: guest
+          networks:
+            - brokerx-network
+  
+  volumes:
+    auth-data:
+      driver: local
+    client-data:
+      driver: local
+    wallet-data:
+      driver: local
+    order-data:
+      driver: local
+    matching-data:
+      driver: local
 networks:
   brokerx-network:
     driver: bridge

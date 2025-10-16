@@ -1,8 +1,8 @@
-package com.broker.matchingservice.dto;
+package com.broker.orderService.dto;
 
 import java.io.Serializable;
 
-public class Order implements Serializable {
+public class OrderDto implements Serializable {
     private String orderId;
     private String stockSymbol;
     private int quantity;
@@ -10,11 +10,11 @@ public class Order implements Serializable {
     private String orderType; // e.g., "BUY" or "SELL"
 
     // Getters and Setters
-    public String getOrderId() {
+    public String getOrderDtoId() {
         return orderId;
     }
 
-    public void setOrderId(String orderId) {
+    public void setOrderDtoId(String orderId) {
         this.orderId = orderId;
     }
 
