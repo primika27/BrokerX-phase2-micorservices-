@@ -62,6 +62,7 @@ public class WalletController {
             @RequestParam("ownerEmail") String ownerEmail,
             @RequestParam("amount") double amount,
             @RequestParam("type") String type) { // "DEBIT" ou "CREDIT"
+        System.out.println("transaction endpoint called with ownerEmail: " + ownerEmail + ", amount: " + amount + ", type: " + type);
         
         if (ownerEmail == null || ownerEmail.isEmpty()) {
             return ResponseEntity.badRequest().body("Owner email is required");
