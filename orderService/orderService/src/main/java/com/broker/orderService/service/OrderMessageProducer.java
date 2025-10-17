@@ -1,7 +1,7 @@
-package com.broker.orderservice.service;
+package com.broker.orderService.service;
 
-import com.broker.orderservice.config.RabbitMQConfig;
-import com.broker.orderservice.dto.Order;
+import com.broker.orderService.config.RabbitMQConfig;
+import com.broker.orderService.dto.Order;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 

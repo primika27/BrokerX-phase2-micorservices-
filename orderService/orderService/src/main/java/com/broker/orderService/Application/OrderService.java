@@ -95,7 +95,7 @@ public class OrderService {
             
             // 6. Send order to matching service via RabbitMQ
             OrderDto orderDto = new OrderDto(); // This is the DTO for RabbitMQ
-            orderDto.setOrderId(String.valueOf(savedOrder.getOrderId())); // Assuming getOrderId returns int
+            orderDto.setOrderDtoId(String.valueOf(savedOrder.getOrderId())); // Assuming getOrderId returns int
             orderDto.setStockSymbol(savedOrder.getSymbol());
             orderDto.setQuantity(savedOrder.getQuantity());
             orderDto.setPrice(savedOrder.getPrice());

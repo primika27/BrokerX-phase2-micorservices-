@@ -14,12 +14,13 @@ public class Order {
     String symbol;
     double price;
     int quantity;
-    int status; 
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
     private String orderType;
 
     public Order() {}
 
-    public Order(int orderId, String symbol, double price, int quantity, int status) {
+    public Order(int orderId, String symbol, double price, int quantity, OrderStatus status) {
         this.orderId = orderId;
         this.symbol = symbol;
         this.price = price;
@@ -68,11 +69,11 @@ public class Order {
         this.quantity = quantity;
     }
 
-    public int getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(int status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 
