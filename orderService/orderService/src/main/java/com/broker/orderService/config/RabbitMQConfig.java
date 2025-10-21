@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     public static final String ORDER_QUEUE = "orderQueue"; // Must match the queue name in matchingService
+    public static final String MATCHING_QUEUE = "matchingQueue"; // Must match the queue name in matchingService
 
     @Bean
     public Queue orderQueue() {

@@ -3,6 +3,8 @@ package com.broker.matchingService.service;
 import com.broker.matchingService.dto.Trade;
 import com.broker.matchingService.model.MatchingOrder;
 import com.broker.matchingService.repository.MatchingOrderRepository;
+import com.broker.matchingService.config.RabbitMQConfig;
+import com.broker.matchingService.dto.OrderDto;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +23,7 @@ public class OrderMatchingService {
     }
 
     @Transactional
-    public void processNewOrder(Order newOrderDto) {
+    public void processNewOrder(OrderDto newOrderDto) {
         System.out.println("Processing new order for matching: " + newOrderDto);
 
         // Convert DTO to Entity and save to order book
