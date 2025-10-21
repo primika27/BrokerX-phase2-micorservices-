@@ -10,13 +10,19 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
-
+    //sent to matching service for new orders
     public static final String ORDER_QUEUE = "orderQueue"; // Must match the queue name in matchingService
+    //sent back from the matching service after matching 
     public static final String MATCHING_QUEUE = "matchingQueue"; // Must match the queue name in matchingService
 
     @Bean
     public Queue orderQueue() {
         return new Queue(ORDER_QUEUE, false);
+    }
+
+    @Bean
+    public Queue matchingQueue() {
+        return new Queue(MATCHING_QUEUE, false);
     }
 
     @Bean

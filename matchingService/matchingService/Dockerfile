@@ -23,11 +23,11 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests
 
 # Exposer le port
-EXPOSE 8084
+EXPOSE 8085
 
 # Définir les variables d'environnement par défaut
 ENV SPRING_PROFILES_ACTIVE=docker
 ENV JWT_SECRET=YnJva2VyWFNlY3JldEtleUZvckpXVFNpZ25pbmdTdXBlckxvbmdTdHJpbmdUaGF0SXNTZWN1cmU=
 
 # Commande pour démarrer l'application
-CMD ["java", "-jar", "target/orderService-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "target/matchingService-0.0.1-SNAPSHOT.jar"]

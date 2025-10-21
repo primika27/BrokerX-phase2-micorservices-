@@ -1,4 +1,4 @@
-version: '3.8'
+
 
 services:
   # ========================
@@ -21,12 +21,12 @@ services:
       - matching-service
     networks:
       - brokerx-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 60s
 
   # ========================
   # AUTH SERVICE
@@ -47,12 +47,12 @@ services:
       - auth-data:/data
     networks:
       - brokerx-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 60s
 
   # ========================
   # CLIENT SERVICE
@@ -72,12 +72,12 @@ services:
       - client-data:/data
     networks:
       - brokerx-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 60s
 
   # ========================
   # WALLET SERVICE
@@ -96,17 +96,17 @@ services:
       - wallet-data:/data
     networks:
       - brokerx-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 60s
 
   # ========================
   # ORDER SERVICE
   # ========================
-        order-service:
+  order-service:
           build:
             context: ./orderService/orderService
             dockerfile: Dockerfile
@@ -124,16 +124,16 @@ services:
             - rabbitmq
           networks:
             - brokerx-network
-          healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-            start_period: 60s
+          # healthcheck:
+          #   test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+          #   interval: 30s
+          #   timeout: 10s
+          #   retries: 3
+          #   start_period: 60s
   # ========================
   # MATCHING SERVICE
   # ========================
-        matching-service:
+  matching-service:          
           build:
             context: ./matchingService/matchingService
             dockerfile: Dockerfile
@@ -149,36 +149,36 @@ services:
             - rabbitmq
           networks:
             - brokerx-network
-          healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
-            interval: 30s
-            timeout: 10s
-            retries: 3
-            start_period: 60s
+          # healthcheck:
+          #   test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+          #   interval: 30s
+          #   timeout: 10s
+          #   retries: 3
+          #   start_period: 60s
   
-        rabbitmq:
-          image: rabbitmq:3-management
-          hostname: rabbitmq
-          ports:
-            - "5672:5672" # AMQP protocol port
-            - "15672:15672" # Management UI port
-          environment:
-            RABBITMQ_DEFAULT_USER: guest
-            RABBITMQ_DEFAULT_PASS: guest
-          networks:
-            - brokerx-network
+  rabbitmq:          
+        image: rabbitmq:3-management
+        hostname: rabbitmq
+        ports:
+          - "5672:5672" # AMQP protocol port
+          - "15672:15672" # Management UI port
+        environment:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        networks:
+          - brokerx-network
   
-  volumes:
-    auth-data:
-      driver: local
-    client-data:
-      driver: local
-    wallet-data:
-      driver: local
-    order-data:
-      driver: local
-    matching-data:
-      driver: local
+volumes:
+  auth-data:
+    driver: local
+  client-data:
+    driver: local
+  wallet-data:
+    driver: local
+  order-data:
+    driver: local
+  matching-data:
+    driver: local
 networks:
   brokerx-network:
     driver: bridge
