@@ -1,4 +1,4 @@
-package com.broker.matchingservice.config;
+package com.broker.matchingService.config;
 
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;

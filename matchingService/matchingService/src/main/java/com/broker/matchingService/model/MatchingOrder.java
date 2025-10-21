@@ -1,4 +1,4 @@
-package com.broker.matchingservice.model;
+package com.broker.matchingService.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

@@ -1,7 +1,7 @@
 package com.broker.orderService.service;
 
 import com.broker.orderService.config.RabbitMQConfig;
-import com.broker.orderService.dto.Order;
+import com.broker.orderService.dto.OrderDto;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +14,7 @@ public class OrderMessageProducer {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void sendNewOrderToMatchingService(Order order) {
+    public void sendNewOrderToMatchingService(OrderDto order) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_QUEUE, order);
         System.out.println("OrderService sent new order to matchingService: " + order);
     }

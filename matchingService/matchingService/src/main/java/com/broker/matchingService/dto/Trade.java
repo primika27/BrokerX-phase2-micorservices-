@@ -1,4 +1,4 @@
-package com.broker.matchingservice.dto;
+package com.broker.matchingService.dto;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;

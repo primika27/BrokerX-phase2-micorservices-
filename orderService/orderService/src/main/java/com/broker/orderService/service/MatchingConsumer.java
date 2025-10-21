@@ -1,11 +1,11 @@
-package com.broker.orderservice.service;
+package com.broker.orderService.service;
 
-import com.broker.orderservice.config.RabbitMQConfig;
-import com.broker.orderservice.dto.Trade;
+import com.broker.orderService.config.RabbitMQConfig;
+import com.broker.orderService.dto.Trade;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import com.broker.orderservice.domain.Order;
-import com.broker.orderservice.domain.OrderStatus;
-import com.broker.orderservice.infrastructure.repo.OrderRepository;
+import com.broker.orderService.domain.Order;
+import com.broker.orderService.domain.OrderStatus;
+import com.broker.orderService.infrastructure.repo.OrderRepository;
 import org.springframework.stereotype.Service;
 
 @Service

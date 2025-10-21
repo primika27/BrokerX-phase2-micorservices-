@@ -1,6 +1,6 @@
-package com.broker.matchingservice.repository;
+package com.broker.matchingService.repository;
 
-import com.broker.matchingservice.model.MatchingOrder;
+import com.broker.matchingService.model.MatchingOrder;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

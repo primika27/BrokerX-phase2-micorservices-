@@ -18,7 +18,9 @@ public class Order {
     private OrderStatus status;
     private String orderType;
 
-    public Order() {}
+    public Order() {
+        this.status = OrderStatus.PENDING;
+    }
 
     public Order(int orderId, String symbol, double price, int quantity, OrderStatus status) {
         this.orderId = orderId;

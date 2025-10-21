@@ -8,6 +8,7 @@ import com.broker.orderService.domain.Order;
 import java.util.Optional;
 import java.util.List;
 import java.util.Map;
+import com.broker.orderService.domain.OrderStatus;
 import java.util.HashMap;
 import com.broker.orderService.domain.Transaction;
 import com.broker.orderService.domain.TransactionType;
@@ -80,7 +81,7 @@ public class OrderService {
             order.setSymbol(symbol);
             order.setPrice(price);
             order.setQuantity(quantity);
-            order.setStatus(1); // exécuté - This status might need review for pending matching
+            order.setStatus(OrderStatus.FILLED); // exécuté - This status might need review for pending matching
             order.setOrderType("BUY");
             Order savedOrder = orderRepository.save(order);
 

@@ -1,7 +1,7 @@
-package com.broker.matchingservice.service;
+package com.broker.matchingService.service;
 
-import com.broker.matchingservice.config.RabbitMQConfig;
-import com.broker.matchingservice.dto.Order;
+import com.broker.matchingService.config.RabbitMQConfig;
+import com.broker.matchingService.dto.Trade;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
 

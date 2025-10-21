@@ -1,8 +1,8 @@
-package com.broker.matchingservice.service;
+package com.broker.matchingService.service;
 
-import com.broker.matchingservice.dto.Order;
-import com.broker.matchingservice.model.MatchingOrder;
-import com.broker.matchingservice.repository.MatchingOrderRepository;
+import com.broker.matchingService.dto.Trade;
+import com.broker.matchingService.model.MatchingOrder;
+import com.broker.matchingService.repository.MatchingOrderRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
