@@ -1,15 +1,27 @@
 package com.broker.gatewayService.config;
 
+import java.util.List;
+
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @Component
 public class JwtAuthFilter implements GatewayFilter {
+
+    private static final List<String> PUBLIC_PREFIXES = List.of(
+        "/api/auth/login",   
+        "/api/auth/verify",
+        "/api/auth/verify-otp",             // login, register, verify, etc.
+        "/api/clients/register",   // if you register clients here
+        "/actuator/health"         // optional health endpoint
+    );
     
   private final JwtService jwtService;
 
@@ -17,9 +29,23 @@ public class JwtAuthFilter implements GatewayFilter {
         this.jwtService = jwtService;
     }
 
+    private boolean isPublicPath(String path) {
+        for (String p : PUBLIC_PREFIXES) {
+            if (path.startsWith(p)) return true;
+        }
+        return false;
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+
+        var request = exchange.getRequest();
+         
+        if (request.getMethod() == HttpMethod.OPTIONS) {
+            exchange.getResponse().setStatusCode(HttpStatus.NO_CONTENT);
+            return exchange.getResponse().setComplete();
+        }
 
         // Allow public endpoints (all auth endpoints should be public)
         if (path.startsWith("/api/auth/")|| path.startsWith("/api/clients/register")) {
@@ -58,6 +84,7 @@ public class JwtAuthFilter implements GatewayFilter {
         ServerWebExchange modifiedExchange = exchange.mutate()
                 .request(exchange.getRequest().mutate()
                         .header("X-Authenticated-User", email)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .build())
                 .build();
 

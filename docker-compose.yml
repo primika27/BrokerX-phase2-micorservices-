@@ -1,9 +1,22 @@
 
 
 services:
-  # ========================
+
+#Frontend service
+  frontend:
+    build: ./frontend
+    image: brokerx-frontend:dev
+    ports:
+      - "5173:80"            # visit http://localhost:5173
+    depends_on:
+      - gateway
+    networks:
+      - brokerx-network
+    environment:
+      - NODE_ENV=production
+
+
   # GATEWAY SERVICE
-  # ========================
   gateway:
     build:
       context: ./gatewayService
@@ -28,9 +41,8 @@ services:
     #   retries: 3
     #   start_period: 60s
 
-  # ========================
   # AUTH SERVICE
-  # ========================
+
   auth-service:
     build:
       context: ./authService/authService
@@ -54,9 +66,8 @@ services:
     #   retries: 3
     #   start_period: 60s
 
-  # ========================
+
   # CLIENT SERVICE
-  # ========================
   client-service:
     build:
       context: ./clientService/clientService
@@ -79,9 +90,8 @@ services:
     #   retries: 3
     #   start_period: 60s
 
-  # ========================
+ 
   # WALLET SERVICE
-  # ========================
   wallet-service:
     build:
       context: ./walletService/walletService
@@ -103,9 +113,7 @@ services:
     #   retries: 3
     #   start_period: 60s
 
-  # ========================
   # ORDER SERVICE
-  # ========================
   order-service:
           build:
             context: ./orderService/orderService
@@ -130,9 +138,8 @@ services:
           #   timeout: 10s
           #   retries: 3
           #   start_period: 60s
-  # ========================
+
   # MATCHING SERVICE
-  # ========================
   matching-service:          
           build:
             context: ./matchingService/matchingService

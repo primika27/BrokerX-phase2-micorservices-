@@ -1,0 +1,25 @@
+import React, { useEffect, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { AuthContext } from "./auth-context";
+import { useAuth } from "./useAuth";
+
+
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [jwt, setJwt] = useState<string | null>(null);
+
+  useEffect(() => { setJwt(localStorage.getItem("jwt")); }, []);
+  useEffect(() => {
+    if (jwt) localStorage.setItem("jwt", jwt);
+    else localStorage.removeItem("jwt");
+  }, [jwt]);
+
+  return <AuthContext.Provider value={{ jwt, setJwt }}>{children}</AuthContext.Provider>;
+}
+
+export function Protected({ children }: { children: React.ReactNode }) {
+  const { jwt } = useAuth();
+  const loc = useLocation();
+  if (!jwt) return <Navigate to="/login" replace state={{ from: loc }} />;
+  return <>{children}</>;
+}

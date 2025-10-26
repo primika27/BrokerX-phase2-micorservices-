@@ -5,7 +5,7 @@ import com.broker.clientService.Application.ClientService;
 import com.broker.clientService.domain.Client;
 import com.broker.clientService.Infrastructure.Repo.ClientRepository;
 import com.broker.clientService.Infrastructure.client.UserCredentialRequest;
-
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +36,31 @@ public class ClientController {
         clientService.register(name, email, password);
         return ResponseEntity.ok("Client registered successfully!");
     }
+
+@GetMapping("/me")
+public ResponseEntity<?> getCurrentClient(
+        @RequestHeader(value = "X-Authenticated-User", required = false) String email) {
+    
+    if (email == null || email.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing authentication header");
+    }
+
+    Client client = clientRepository.findByEmail(email);
+    if (client == null) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Client not found");
+    }
+
+    // Build a lightweight DTO instead of returning the full entity
+    Map<String, Object> response = Map.of(
+        "id", client.getClientId(),
+        "name", client.getName(),
+        "email", client.getEmail(),
+        "status", client.getStatut()
+    );
+
+    return ResponseEntity.ok(response);
+}
+
 
     @GetMapping("/test")
     public ResponseEntity<String> test() {
