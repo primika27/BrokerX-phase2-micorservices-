@@ -397,7 +397,7 @@ Rationnel : Isolation des domaines métier avec communication explicite via API 
 ---
 
 ## 6. Vue d’exécution
-![Diagramme de cas d’utilisation](./UC_diagramPhase1.png)
+![Diagramme de cas d’utilisation](./useCase.png)
 
 ---
 

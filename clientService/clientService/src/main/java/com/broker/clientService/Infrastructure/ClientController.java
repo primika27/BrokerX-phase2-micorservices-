@@ -99,6 +99,16 @@ public ResponseEntity<?> getCurrentClient(
         }
     }
 
+    @GetMapping("/getEmailById")
+    public ResponseEntity<String> getEmailById(@RequestParam Integer clientId) {
+        Client client = clientRepository.findById(clientId).orElse(null);
+        if (client != null) {
+            return ResponseEntity.ok(client.getEmail());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     
 }
 

@@ -15,4 +15,10 @@ public interface ClientServiceClient {
         @RequestHeader("X-Authenticated-User") String authenticatedUser,
         @RequestParam("email") String email
     );
+
+    @GetMapping("/api/clients/getEmailById")
+    ResponseEntity<String> getEmailById(
+        @RequestHeader("X-Service-Call") String serviceCall,
+        @RequestParam("clientId") Integer clientId
+    );
 }

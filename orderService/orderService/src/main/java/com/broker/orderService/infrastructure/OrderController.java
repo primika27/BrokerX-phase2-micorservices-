@@ -54,12 +54,20 @@ public class OrderController {
         }
         
         double price = ETF_PRICES.get(symbol);
-        boolean success = orderService.acheterAction(clientEmail, symbol, price, quantity);
+        boolean success;
+        
+        if ("BUY".equalsIgnoreCase(orderType)) {
+            success = orderService.acheterAction(clientEmail, symbol, price, quantity);
+        } else if ("SELL".equalsIgnoreCase(orderType)) {
+            success = orderService.vendreAction(clientEmail, symbol, price, quantity);
+        } else {
+            return ResponseEntity.badRequest().body("Invalid order type. Use BUY or SELL.");
+        }
         
         if (success) {
-            return ResponseEntity.ok("Order processed by OrderController");
+            return ResponseEntity.ok("Order submitted for " + orderType.toUpperCase());
         } else {
-            return ResponseEntity.badRequest().body("Order failed. Check your wallet balance or try again.");
+            return ResponseEntity.badRequest().body("Order failed. Please try again.");
         }
     }
 

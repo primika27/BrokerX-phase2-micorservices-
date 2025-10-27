@@ -1,4 +1,3 @@
-import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider, Protected } from "../lib/auth";
@@ -19,7 +18,8 @@ const router = createBrowserRouter([
     path: "/",
     element: <App/>, // top layout (nav + outlet)
     children: [
-      { index: true, element: <Home /> },
+      { index: true, element: <Login /> }, // Default page is now Login
+      { path: "home", element: <Home /> },
       { path: "login", element: <Login /> },
       { path: "register", element: <Register /> },
       { path: "auth/verify-otp", element: <VerifyOtp /> },
@@ -35,9 +35,7 @@ const router = createBrowserRouter([
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
-  </React.StrictMode>
+  <AuthProvider>
+    <RouterProvider router={router} />
+  </AuthProvider>
 );

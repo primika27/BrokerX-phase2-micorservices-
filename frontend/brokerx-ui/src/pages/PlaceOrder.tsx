@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../lib/useAuth";
-
+import Navigation from "../components/Navigation";
 export default function PlaceOrder() {
   const { jwt } = useAuth();
   const [side, setSide] = useState("BUY");
@@ -57,6 +57,7 @@ export default function PlaceOrder() {
 
   return (
     <main style={{ padding: "20px" }}>
+      <Navigation />
       <h1>Place Order</h1>
       
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "15px", maxWidth: "400px" }}>

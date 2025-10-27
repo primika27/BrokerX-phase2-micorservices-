@@ -59,14 +59,7 @@ public class OrderService {
                 return false;
             }
             
-            // 2. Débiter le wallet
-            ResponseEntity<String> debitResponse = walletServiceClient.walletTransaction(clientEmail, clientEmail, total, "DEBIT");
-            if (debitResponse == null || !debitResponse.getStatusCode().is2xxSuccessful()) {
-                System.err.println("Échec du débit du wallet pour " + clientEmail);
-                return false;
-            }
-
-            // 3. Get clientId from clientService
+            // 2. Get clientId from clientService first
             ResponseEntity<Integer> clientResponse = clientServiceClient.getByEmail(clientEmail, clientEmail);
             if (clientResponse == null || !clientResponse.getStatusCode().is2xxSuccessful() || clientResponse.getBody() == null) {
                 System.err.println("Impossible de récupérer le clientID pour " + clientEmail);
@@ -74,26 +67,17 @@ public class OrderService {
             }
             int clientId = clientResponse.getBody();
             
-            // 4. Créer l'ordre après débit réussi
+            // 3. Create PENDING order (wallet will be debited only when trade executes)
             Order order = new Order(); // This is your domain.Order
             order.setClientId(clientId);
             order.setSymbol(symbol);
             order.setPrice(price);
             order.setQuantity(quantity);
-            order.setStatus(OrderStatus.FILLED); // exécuté - This status might need review for pending matching
+            order.setStatus(OrderStatus.PENDING); // Start as PENDING for matching
             order.setOrderType("BUY");
             Order savedOrder = orderRepository.save(order);
-
-            // 5. Créer la transaction pour l'audit trail
-            Transaction transaction = new Transaction(
-                savedOrder.getOrderId(),
-                TransactionType.ORDER,
-                total,
-                String.format("Achat %d actions %s à %.2f$ par %s", quantity, symbol, price, clientEmail)
-            );
-            transactionRepository.save(transaction);
             
-            // 6. Send order to matching service via RabbitMQ
+            // 4. Send order to matching service via RabbitMQ for processing
             OrderDto orderDto = new OrderDto(); // This is the DTO for RabbitMQ
             orderDto.setOrderDtoId(String.valueOf(savedOrder.getOrderId())); // Assuming getOrderId returns int
             orderDto.setStockSymbol(savedOrder.getSymbol());
@@ -102,11 +86,53 @@ public class OrderService {
             orderDto.setOrderType(savedOrder.getOrderType());
             orderMessageProducer.sendNewOrderToMatchingService(orderDto);
 
-            System.out.println("Achat réussi pour " + clientEmail + ": " + quantity + " " + symbol + " à " + price + "$ (Total: " + total + "$)");
+            System.out.println("Order submitted for matching: " + clientEmail + ": " + quantity + " " + symbol + " à " + price + "$ - Order ID: " + savedOrder.getOrderId());
             return true;
             
         } catch (Exception e) {
             System.err.println("Erreur acheterAction: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // Sell order - create SELL order for matching
+    public boolean vendreAction(String clientEmail, String symbol, double price, int quantity) {
+        try {
+            System.out.println("Processing SELL order for " + clientEmail + ": " + quantity + " " + symbol + " at " + price);
+
+            // 1. Get clientId from clientService
+            ResponseEntity<Integer> clientResponse = clientServiceClient.getByEmail(clientEmail, clientEmail);
+            if (clientResponse == null || !clientResponse.getStatusCode().is2xxSuccessful() || clientResponse.getBody() == null) {
+                System.err.println("Impossible de récupérer le clientID pour " + clientEmail);
+                return false;
+            }
+            int clientId = clientResponse.getBody();
+            
+            // 2. Create SELL order as PENDING for matching
+            Order order = new Order();
+            order.setClientId(clientId);
+            order.setSymbol(symbol);
+            order.setPrice(price);
+            order.setQuantity(quantity);
+            order.setStatus(OrderStatus.PENDING);
+            order.setOrderType("SELL");
+            Order savedOrder = orderRepository.save(order);
+            
+            // 3. Send order to matching service via RabbitMQ for processing
+            OrderDto orderDto = new OrderDto();
+            orderDto.setOrderDtoId(String.valueOf(savedOrder.getOrderId()));
+            orderDto.setStockSymbol(savedOrder.getSymbol());
+            orderDto.setQuantity(savedOrder.getQuantity());
+            orderDto.setPrice(savedOrder.getPrice());
+            orderDto.setOrderType(savedOrder.getOrderType());
+            orderMessageProducer.sendNewOrderToMatchingService(orderDto);
+
+            System.out.println("SELL order submitted for matching: " + clientEmail + ": " + quantity + " " + symbol + " à " + price + "$ - Order ID: " + savedOrder.getOrderId());
+            return true;
+            
+        } catch (Exception e) {
+            System.err.println("Erreur vendreAction: " + e.getMessage());
             e.printStackTrace();
             return false;
         }

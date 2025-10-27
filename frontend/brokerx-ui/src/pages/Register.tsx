@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import Navigation from "../components/Navigation";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -14,11 +16,32 @@ export default function Register() {
     // Clear previous messages
     setError("");
     setSuccess("");
+
+    // Basic client-side validation
+    if (!name.trim()) {
+      setError("Name is required");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Email is required");
+      return;
+    }
+    if (!password.trim()) {
+      setError("Password is required");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Use fetch directly since backend returns plain text, not JSON
-      const response = await fetch("/api/clients/register", {
+      console.log("Attempting registration with:", { name, email, password: "***" });
+      
+      // Use fetch with full URL to bypass potential proxy issues
+      const response = await fetch("http://localhost:8080/api/clients/register", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -26,7 +49,9 @@ export default function Register() {
         body: JSON.stringify({ name, email, password })
       });
 
+      console.log("Registration response status:", response.status);
       const message = await response.text(); // Get plain text response
+      console.log("Registration response message:", message);
 
       if (response.ok) {
         setSuccess(message || "Registered successfully! Check your email to verify.");
@@ -35,18 +60,21 @@ export default function Register() {
         setEmail("");
         setPassword("");
       } else {
-        setError(message || "Registration failed. Please try again.");
+        setError(`Registration failed (${response.status}): ${message || "Please try again."}`);
       }
-    } catch {
-      setError("Network error. Please check your connection and try again.");
+    } catch (networkError) {
+      console.error("Registration network error:", networkError);
+      setError(`Network error: ${networkError instanceof Error ? networkError.message : "Please check your connection and try again."}`);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main style={{ padding: "20px", maxWidth: "400px", margin: "0 auto" }}>
-      <h1>Create Account</h1>
+    <>
+      <Navigation />
+      <main style={{ padding: "20px", maxWidth: "400px", margin: "0 auto" }}>
+        <h1>Create Account</h1>
       <p style={{ marginBottom: "20px", color: "#666" }}>
         Sign up to start trading with BrokerX
       </p>
@@ -147,8 +175,9 @@ export default function Register() {
       </form>
 
       <div style={{ marginTop: "20px", textAlign: "center", fontSize: "14px", color: "#666" }}>
-        <p>Already have an account? <a href="/login" style={{ color: "#007bff" }}>Sign in here</a></p>
+        <p>Already have an account? <Link to="/login" style={{ color: "#007bff" }}>Sign in here</Link></p>
       </div>
     </main>
+    </>
   );
 }
