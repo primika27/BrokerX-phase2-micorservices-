@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { apiPost } from "../lib/api";
 
 export default function Register() {
   const [name,setName]=useState("");
@@ -9,14 +9,17 @@ export default function Register() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
 
-    const params = new URLSearchParams({ name, email, password }).toString();
-    const res = await fetch(`/api/clients/register?${params}`, { method: "POST" });
-    if (!res.ok) {
-      const msg = await res.text();
-      alert(`Register failed: ${msg}`);
-      return;
+    try {
+      const response = await apiPost<string>(
+        "/api/clients/register",
+        { name, email, password }
+      );
+
+      // Backend returns a simple string message
+      alert(response || "Registered successfully! Check your email to verify.");
+    } catch (error) {
+      alert(`Register failed: ${error}`);
     }
-    alert("Registered. Check your email to verify.");
   }
 
   return (

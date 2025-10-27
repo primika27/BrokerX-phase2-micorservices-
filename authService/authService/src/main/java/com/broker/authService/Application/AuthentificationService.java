@@ -70,15 +70,16 @@ public class AuthentificationService {
 
         UserCredential user = userOpt.get();
 
-        if (!"ACTIVE".equalsIgnoreCase(user.getStatus())) {
-            return "ACCOUNT_INACTIVE";
-        }
-
         if (!passwordEncoder.matches(motDePasse, user.getPasswordHash())) {
             return "INVALID_PASSWORD";
         }
 
-        // MFA
+        // Check if account is completely inactive/blocked
+        if (!"PENDING".equalsIgnoreCase(user.getStatus()) && !"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+            return "ACCOUNT_INACTIVE";
+        }
+
+        // For all valid users (PENDING or ACTIVE), send OTP for login authentication
         String otp = String.format("%06d", random.nextInt(1_000_000));
         otpStore.put(user.getId(), otp);
         System.out.println("DEBUG - otp: " + otp);

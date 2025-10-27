@@ -6,6 +6,7 @@ import com.broker.clientService.domain.Client;
 import com.broker.clientService.Infrastructure.Repo.ClientRepository;
 import com.broker.clientService.Infrastructure.client.UserCredentialRequest;
 import java.util.Map;
+import com.broker.clientService.dto.RegisterRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,14 +29,26 @@ public class ClientController {
     }
 
 	// Registration endpoint
+    // @PostMapping("/register")
+    // public ResponseEntity<String> register(@RequestParam String name, 
+    //                                     @RequestParam String email, 
+    //                                     @RequestParam String password) {
+    //     authClient.createUserCredential(new UserCredentialRequest(email, password));
+    //     clientService.register(name, email, password);
+    //     return ResponseEntity.ok("Client registered successfully!");
+    // }
+
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestParam String name, 
-                                        @RequestParam String email, 
-                                        @RequestParam String password) {
-        authClient.createUserCredential(new UserCredentialRequest(email, password));
-        clientService.register(name, email, password);
-        return ResponseEntity.ok("Client registered successfully!");
+    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+        try {
+            authClient.createUserCredential(new UserCredentialRequest(request.getEmail(), request.getPassword()));
+            clientService.register(request.getName(), request.getEmail(), request.getPassword());
+            return ResponseEntity.ok("Client registered successfully!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
+        }
     }
+
 
 @GetMapping("/me")
 public ResponseEntity<?> getCurrentClient(

@@ -8,7 +8,7 @@ import com.broker.clientService.Infrastructure.config.FeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "auth-service", url = "http://localhost:8080/api/auth",
+@FeignClient(name = "auth-service", url = "http://auth-service:8081/api/auth",
 configuration = FeignConfig.class)
 public interface AuthClient {
 

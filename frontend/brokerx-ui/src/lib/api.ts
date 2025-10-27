@@ -1,4 +1,4 @@
-const base = "";
+const base = "http://localhost:8080";
 
 function headers(jwt?: string) {
   return {

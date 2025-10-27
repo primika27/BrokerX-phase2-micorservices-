@@ -18,6 +18,8 @@ export default function Login() {
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    try{
     const r = await apiPost<LoginResp, { email: string; password: string }>(
       "/api/auth/login",
       { email, password }
@@ -31,8 +33,10 @@ export default function Login() {
     } else {
       alert(r.message ?? r.status);
     }
+  } catch (error) {
+        alert("Login failed: " + error);
   }
-
+    }
   return (
     <main>
       <h1>Login</h1>

@@ -52,7 +52,25 @@ public ResponseEntity<AuthResponse> simpleLogin(@RequestBody UserCredentialReque
     public ResponseEntity<AuthResponse> login(@RequestBody UserCredentialRequest request) {
         try {
             String result = authentificationService.loginWithMfa(request.getEmail(), request.getPassword());
-            return ResponseEntity.ok(new AuthResponse(result,null, null));
+            
+            // Handle different login results with appropriate messages
+            String message = null;
+            switch (result) {
+                case "MFA_REQUIRED":
+                    message = "OTP has been sent to your email. Please enter the code.";
+                    break;
+                case "USER_NOT_FOUND":
+                    message = "No account found with this email.";
+                    break;
+                case "INVALID_PASSWORD":
+                    message = "Incorrect password.";
+                    break;
+                case "ACCOUNT_INACTIVE":
+                    message = "Your account is inactive. Please contact support.";
+                    break;
+            }
+            
+            return ResponseEntity.ok(new AuthResponse(result, null, message));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new AuthResponse("ERROR", null, e.getMessage()));
         }

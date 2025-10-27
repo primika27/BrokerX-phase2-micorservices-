@@ -18,9 +18,12 @@ public class JwtAuthFilter implements GatewayFilter {
     private static final List<String> PUBLIC_PREFIXES = List.of(
         "/api/auth/login",   
         "/api/auth/verify",
-        "/api/auth/verify-otp",             // login, register, verify, etc.
-        "/api/clients/register",   // if you register clients here
-        "/actuator/health"         // optional health endpoint
+        "/api/auth/verify-otp",
+        "/api/auth/register",
+        "/api/auth/test",                 // test endpoint
+        "/api/clients/register",
+        "/api/clients/test",              // client test endpoint
+        "/actuator/health"                // optional health endpoint
     );
     
   private final JwtService jwtService;
@@ -47,8 +50,8 @@ public class JwtAuthFilter implements GatewayFilter {
             return exchange.getResponse().setComplete();
         }
 
-        // Allow public endpoints (all auth endpoints should be public)
-        if (path.startsWith("/api/auth/")|| path.startsWith("/api/clients/register")) {
+        // Allow public endpoints
+        if (isPublicPath(path)) {
             return chain.filter(exchange);
         }
 

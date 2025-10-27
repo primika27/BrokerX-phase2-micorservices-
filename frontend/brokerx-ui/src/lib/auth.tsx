@@ -14,7 +14,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem("jwt");
   }, [jwt]);
 
-  return <AuthContext.Provider value={{ jwt, setJwt }}>{children}</AuthContext.Provider>;
+  const logout = () => {
+    setJwt(null); // clear token from context
+    localStorage.removeItem("jwt"); // optional if already handled
+  };
+
+  return <AuthContext.Provider value={{ jwt, setJwt,logout }}>{children}</AuthContext.Provider>;
 }
 
 export function Protected({ children }: { children: React.ReactNode }) {

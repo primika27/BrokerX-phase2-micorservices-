@@ -18,30 +18,38 @@ public class GatewayConfig {
     @Bean
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
-            // Authentification service routes (with JWT filter that handles public endpoints)
-            .route("auth_service", r -> r.path("/api/auth/**")
+            // Auth service routes (public endpoints without JWT filter)
+            .route("auth_service_public", r -> r.path("/api/auth/login", "/api/auth/register", "/api/auth/verify**", "/api/auth/test")
+                .uri("http://auth-service:8081"))
+            
+            // Auth service routes (protected endpoints with JWT filter)  
+            .route("auth_service_protected", r -> r.path("/api/auth/**")
                 .filters(f -> f.filter(jwtAuthFilter))
-                .uri("http://localhost:8081"))
+                .uri("http://auth-service:8081"))
 
-            // Client service routes
-            .route("client_service", r -> r.path("/api/clients/**")
+            // Client service routes (public registration)
+            .route("client_service_public", r -> r.path("/api/clients/register", "/api/clients/test")
+                .uri("http://client-service:8082"))
+                
+            // Client service routes (protected)
+            .route("client_service_protected", r -> r.path("/api/clients/**")
                 .filters(f -> f.filter(jwtAuthFilter))
-                .uri("http://localhost:8082"))
+                .uri("http://client-service:8082"))
 
             // Wallet service routes
             .route("wallet_service", r -> r.path("/api/wallet/**")
                 .filters(f -> f.filter(jwtAuthFilter))
-                .uri("http://localhost:8083"))
+                .uri("http://wallet-service:8083"))
 
             // Order service routes
             .route("order_service", r -> r.path("/api/orders/**")
                 .filters(f -> f.filter(jwtAuthFilter))
-                .uri("http://localhost:8084"))
+                .uri("http://order-service:8084"))
 
             // Matching service routes
             .route("matching_service", r -> r.path("/api/matching/**")
                 .filters(f -> f.filter(jwtAuthFilter))
-                .uri("http://localhost:8085"))
+                .uri("http://matching-service:8085"))
 
             .build();
     }
