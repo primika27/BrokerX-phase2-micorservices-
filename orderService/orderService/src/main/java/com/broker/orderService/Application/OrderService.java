@@ -47,7 +47,7 @@ public class OrderService {
             double total = price * quantity;
 
             // 1. Vérifier le solde du wallet avant de créer l'ordre
-            ResponseEntity<Double> balanceResponse = walletServiceClient.getBalance(clientEmail);
+            ResponseEntity<Double> balanceResponse = walletServiceClient.getBalance(clientEmail, clientEmail);
             if (balanceResponse == null || !balanceResponse.getStatusCode().is2xxSuccessful() || balanceResponse.getBody() == null) {
                 System.err.println("Impossible de récupérer le solde du wallet pour " + clientEmail);
                 return false;
@@ -60,14 +60,14 @@ public class OrderService {
             }
             
             // 2. Débiter le wallet
-            ResponseEntity<String> debitResponse = walletServiceClient.walletTransaction(clientEmail, total, "DEBIT");
+            ResponseEntity<String> debitResponse = walletServiceClient.walletTransaction(clientEmail, clientEmail, total, "DEBIT");
             if (debitResponse == null || !debitResponse.getStatusCode().is2xxSuccessful()) {
                 System.err.println("Échec du débit du wallet pour " + clientEmail);
                 return false;
             }
 
             // 3. Get clientId from clientService
-            ResponseEntity<Integer> clientResponse = clientServiceClient.getByEmail(clientEmail);
+            ResponseEntity<Integer> clientResponse = clientServiceClient.getByEmail(clientEmail, clientEmail);
             if (clientResponse == null || !clientResponse.getStatusCode().is2xxSuccessful() || clientResponse.getBody() == null) {
                 System.err.println("Impossible de récupérer le clientID pour " + clientEmail);
                 return false;
@@ -116,7 +116,7 @@ public class OrderService {
     public Map<String, Object> getHoldings(String clientEmail) {
         try {
             // Get client ID from client service
-            ResponseEntity<Integer> clientIdResponse = clientServiceClient.getByEmail(clientEmail);
+            ResponseEntity<Integer> clientIdResponse = clientServiceClient.getByEmail(clientEmail, clientEmail);
             
             if (clientIdResponse.getStatusCode().is2xxSuccessful() && clientIdResponse.getBody() != null) {
                 int clientId = clientIdResponse.getBody().intValue();

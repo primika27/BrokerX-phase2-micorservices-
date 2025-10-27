@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>docs.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="brokerx-%E2%80%93-documentation-darchitecture-phase-2---microservices">BrokerX – Documentation d'Architecture (Phase 2 - Microservices)</h1>
+<p>Ce document, basé sur le modèle <strong>arc42</strong>, décrit l'architecture microservices du système de courtage BrokerX.</p>
+<hr>
+<h2 id="1-introduction-et-objectifs">1. Introduction et Objectifs</h2>
+<h3 id="panorama-des-exigences">Panorama des exigences</h3>
+<p>L’application BrokerX est désormais une plateforme de courtage en ligne architecturée en microservices Java Spring Boot.
+Elle permet aux utilisateurs de :</p>
+<ul>
+<li>
+<p>S’inscrire et vérifier leur identité (MFA/OTP),</p>
+</li>
+<li>
+<p>Gérer leur profil client,</p>
+</li>
+<li>
+<p>Approvisionner un portefeuille virtuel,</p>
+</li>
+<li>
+<p>Passer des ordres d’achat et de vente,</p>
+</li>
+<li>
+<p>Consulter leur solde et historique de transactions.</p>
+</li>
+</ul>
+<p>Le système est conçu pour illustrer les principes d’architecture distribuée, de conteneurisation, et d’intégration continue (CI/CD).
+Chaque service est indépendant, avec sa propre base de données H2, communiquant via des API REST et sécurisé par un API Gateway gérant les jetons JWT.</p>
+<h3 id="objectifs-qualit%C3%A9">Objectifs qualité</h3>
+<table>
+<thead>
+<tr>
+<th>Priorité</th>
+<th>Objectif qualité</th>
+<th>Scénario</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Sécurité distribuée</strong></td>
+<td>Tous les appels entre services passent par le Gateway pour validation du JWT et propagation sécurisée de l’identité (X-Authenticated-User). Le MFA reste obligatoire côté AuthService. Aucune API interne n’est exposée directement.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Performance inter-services</strong></td>
+<td>Lors du placement d’un ordre, la communication OrderService → WalletService via Feign doit avoir une latence ≤ 100 ms. Le temps total de traitement d’un ordre complet (avec vérification et transaction) doit rester sous 500 ms.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Résilience et tolérance aux pannes</strong></td>
+<td>En cas d’indisponibilité temporaire d’un service (ex. WalletService), les autres continuent à fonctionner sans crash. Un circuit breaker ou une gestion d’erreurs Feign permet de limiter les échecs en cascade.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Déployabilité indépendante</strong></td>
+<td>Chaque microservice doit être déployable et testable individuellement. Le pipeline CI/CD construit, teste et déploie chaque service dans un conteneur distinct orchestré par Docker Compose.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Observabilité et traçabilité</strong></td>
+<td>Les logs doivent inclure un trace ID ou correlation ID propagé par le Gateway pour suivre le cycle complet d’une requête entre microservices (Auth → Client → Wallet → Order).</td>
+</tr>
+</tbody>
+</table>
+<p>Explication de la priorisation:</p>
+<p>La priorisation des objectifs qualité reflète les besoins essentiels d’une architecture microservices pour un système de courtage distribué :</p>
+<p>La sécurité distribuée est placée en premier car la plateforme repose désormais sur plusieurs services indépendants (Auth, Client, Wallet, Order). Chacun doit être protégé par le Gateway, qui valide les jetons JWT et assure l’isolation entre domaines fonctionnels.</p>
+<p>La performance inter-services vient ensuite : dans un environnement distribué, la rapidité ne dépend plus seulement du code, mais de la latence réseau et de la communication Feign entre services. Une faible latence est essentielle pour maintenir une expérience fluide lors du placement d’ordres.</p>
+<p>La résilience est désormais une priorité centrale : chaque service doit pouvoir continuer à fonctionner même si un autre est temporairement indisponible. Cela garantit la continuité des opérations et évite les pannes en cascade.</p>
+<p>La déployabilité indépendante est le moteur de l’agilité du système : chaque microservice peut être mis à jour, testé et redéployé sans impacter les autres, ce qui simplifie les itérations et le travail en équipe.</p>
+<p>Enfin, l’observabilité complète l’ensemble : elle assure la traçabilité des requêtes entre services, facilitant le diagnostic, le suivi de performance et la supervision du comportement global du système distribué.</p>
+<h3 id="parties-prenantes">Parties prenantes</h3>
+<ul>
+<li><strong>Clients</strong> : Investisseurs utilisant la plateforme
+-<strong>Opérations Back-Office</strong> : gestion des règlements, supervision.
+-<strong>Conformité / Risque</strong> : surveillance pré- et post-trade.
+-<strong>Fournisseurs de données de marché</strong> : cotations en temps réel.
+-<strong>Bourses externes</strong> : simulateurs de marché pour routage d’ordres.</li>
+<li><strong>Développeurs</strong> : Apprentissage des outils modernes de développement et des pipelines CI/CD</li>
+</ul>
+<hr>
+<h2 id="2-contraintes-darchitecture">2. Contraintes d’architecture</h2>
+<table>
+<thead>
+<tr>
+<th>Contrainte</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Technologie</strong></td>
+<td>Java 21 avec Spring Boot, PostgreSQL, JUnit et GitLab CI/CD</td>
+</tr>
+<tr>
+<td><strong>Déploiement</strong></td>
+<td>Application et base de données conteneurisées avec Docker et orchestrées avec docker-compose</td>
+</tr>
+<tr>
+<td><strong>Éducatif</strong></td>
+<td>Le projet doit démontrer clairement les concepts d’infrastructure et de CI/CD</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-port%C3%A9e-et-contexte-du-syst%C3%A8me">3. Portée et contexte du système</h2>
+<h3 id="architecture-microservices">Architecture Microservices</h3>
+<pre><code class="language-mermaid"><div class="mermaid">graph TD
+    User[Utilisateur] --> Gateway[Gateway :8080]
+    
+    Gateway --> Auth[AuthService :8081]
+    Gateway --> Client[ClientService :8082]  
+    Gateway --> Wallet[WalletService :8083]
+    Gateway --> Order[OrderService :8084]
+    
+    Auth --> AuthDB[(AuthDB H2)]
+    Client --> ClientDB[(ClientDB H2)]
+    Wallet --> WalletDB[(WalletDB H2)]
+    Order --> OrderDB[(OrderDB H2)]
+    
+    Client -.->|Feign + JWT| Auth
+    Order -.->|Feign Direct| Wallet
+    
+    style Gateway fill:#e1f5fe
+    style Auth fill:#f3e5f5
+    style Client fill:#f3e5f5
+    style Wallet fill:#e8f5e8
+    style Order fill:#fff3e0
+</div></code></pre>
+<p>Must haves (4 UC):</p>
+<h2 id="uc-01--inscription--v%C3%A9rification-didentit%C3%A9">UC-01 — Inscription &amp; Vérification d’identité</h2>
+<p>Le processus par lequel un nouvel utilisateur crée un compte sur la plateforme BrokerX. Le client saisit son adresse courriel ou son numéro de téléphone, définit un mot de passe et fournit ses informations personnelles (nom, adresse, date de naissance). Le système valide le format des données et crée un compte avec le statut Pending. Un lien de vérification est envoyé par courriel ou par SMS.</p>
+<p>Lorsque l’utilisateur confirme son identité via le lien et les mécanismes de sécurité (OTP ou MFA), le système active le compte, enregistre l’événement dans les journaux d’audit (avec horodatage et empreinte des documents) et le statut devient Active.</p>
+<ul>
+<li>Acteur : Personne x</li>
+<li>Préconditions: Aucun compte actif pour cet email.</li>
+<li>Déclencheur: L’utilisateur ouvre la page /register.</li>
+<li>Entrées: email, mot de passe.
+Traitement:
+<ol>
+<li>Le système crée un Client avec statut PENDING.</li>
+<li>Génère un OTP et l’envoie par email (simulateur).</li>
+<li>L’utilisateur saisit l’OTP sur la page dédiée.</li>
+<li>Si OTP valide et non expiré → statut passe à ACTIVE.</li>
+</ol>
+</li>
+<li>Règles: email format valide; mot de passe non vide; OTP à durée courte; 3 essais max.</li>
+<li>Sorties: Compte ACTIVE; session non créée automatiquement (login requis).</li>
+<li>Erreurs: OTP invalide/expiré → rester PENDING.</li>
+</ul>
+<p><img src="./dsscu01.png" alt="Diagramme de sequence"></p>
+<p><img src="./rdcu_uc01.png" alt="RDCU 1"></p>
+<p><img src="./rdcu_uc01b.png" alt="RDCU 2"></p>
+<h2 id="uc-02--authentification--mfa">UC-02 — Authentification &amp; MFA</h2>
+<p>Le client saisit son identifiant et son mot de passe. Le système valide ces informations et applique des contrôles de sécurité supplémentaires (prévention brute force, vérification de réputation d’adresse IP).</p>
+<p>Multi-authentification (MFA) est activée et obligatoire, le système demande un second facteur d’authentification tel qu’un code OTP envoyé par courriel. L’utilisateur saisit ce code et, en cas de succès, le système génère un jeton de session (JWT ou opaque), attribue le rôle Client et donne accès à son dashboard.</p>
+<ul>
+<li>Acteur: Client</li>
+<li>Préconditions: Compte ACTIVE.</li>
+<li>Déclencheur: L’utilisateur ouvre /login.</li>
+<li>Entrées: email, mot de passe, puis OTP.</li>
+<li>Traitement:
+<ol>
+<li>Vérification email/mot de passe.</li>
+<li>Envoi d’un OTP par email (MFA).</li>
+<li>Saisie OTP; si OK → création de session Spring Security.</li>
+</ol>
+</li>
+<li>Règles: 3 essais OTP; OTP expirant; pages sensibles protégées.</li>
+<li>Sorties: Session active; accès au tableau de bord et aux actions (dépôt, ordre).</li>
+<li>Erreurs: MDP/OTP incorrects → refus d’accès.</li>
+</ul>
+<p><img src="./dssuc02.png" alt="Diagramme de sequence"></p>
+<p><img src="./rdcu_uc02.png" alt="RDCU 1"></p>
+<p><img src="./rdcu_uc02b.png" alt="RDCU 2"></p>
+<ul>
+<li><strong>UC-03 — Approvisionnement du portefeuille (dépôt virtuel)</strong>
+L’utilisateur saisit le montant souhaité en monnaie simulée. Le système applique des contrôles de validité (plafonds minimum et maximum, règles anti-fraude), puis crée une transaction avec l’état Pending.</li>
+</ul>
+<p>Le service de paiement simulé renvoie ensuite un statut Settled et le système crédite le portefeuille de l’utilisateur du montant demandé et notifie l’utilisateur.</p>
+<p>Si le paiement est asynchrone, le solde n’est crédité qu’à la confirmation. En cas de rejet par le service de paiement, la transaction est marquée Failed avec une notification. Pour les requêtes répétées, le système gère l’idempotence en retournant le même résultat qu’au premier traitement.</p>
+<ul>
+<li>Acteur: Client connecté</li>
+<li>Préconditions: Portefeuille existe pour le client.</li>
+<li>Déclencheur: Formulaire /deposit (montant).</li>
+<li>Entrées: amount (double &gt; 0).</li>
+<li>Traitement (Transactional):
+<ol>
+<li>Valide montant &gt; 0 et sous plafond (ex. ≤ 10 000).</li>
+<li>Charge le Portefeuille par clientId.</li>
+<li>Incrémente le solde et persiste.</li>
+<li>Crée une Transaction(type = DEPOSIT, montant, portefeuilleId) pour l’audit.</li>
+</ol>
+</li>
+<li>Sorties: Réponse texte “SUCCESS: …”; le front affiche une alerte et redirige vers /dashboard.</li>
+<li>Erreurs: “ERROR: …” (montant invalide, portefeuille absent, exception persistance).</li>
+</ul>
+<p><img src="./dss_cu03.png" alt="Diagramme de sequence"></p>
+<p><img src="./rdcu_uc03.png" alt="RDCU 1"></p>
+<ul>
+<li><strong>UC-05 — Placement d’un ordre (marché/limite) avec contrôles pré-trade</strong>
+L’utilisateur saisit les informations de l’ordre : symbole de l’instrument, type (achat ou vente), type d’ordre (marché ou limite), quantité, prix (si limite) et durée (DAY, IOC, etc.).</li>
+</ul>
+<p>Le système normalise et horodate la demande avec précision (UTC, millisecondes ou nanosecondes). Avant d’accepter l’ordre, il applique une série de contrôles pré-trade : disponibilité des fonds ou de la marge, respect des bandes de prix et des tailles de tick, interdictions réglementaires, limites de taille par utilisateur et cohérence des données.</p>
+<p>Si les contrôles sont réussis, le système attribue un identifiant unique d’ordre (OrderID), enregistre l’opération et l’envoie au moteur interne d’appariement. Sinon, l’ordre est rejeté avec un message d'erreur clair.</p>
+<ul>
+<li>Acteur: Client connecté</li>
+<li>Préconditions: Portefeuille existant; solde suffisant pour BUY; positions suffisantes pour SELL.</li>
+<li>Déclencheur: Page /placeOrder (flux en 2 étapes: aperçu → confirmer).</li>
+<li>Entrées: type (BUY/SELL), symbole (liste fixe: SPY, QQQ, VOO, …), quantité (&gt;0).</li>
+<li>Traitement (Transactional):
+<ol>
+<li>Calcule le prix (table côté UI) et le total.</li>
+<li>BUY: vérifie solde ≥ total → débite solde.
+SELL: agrège les ordres exécutés (status=1) → vérifie quantité détenue → crédite solde.</li>
+<li>Persiste l’Order (clientId, symbole, qty, prix, status=1).</li>
+<li>Crée une Transaction(type = ORDER, montant total, portefeuilleId, orderId).</li>
+</ol>
+</li>
+<li>Sorties: “SUCCESS: Achat/Vente …”; redirection vers /dashboard.
+<ul>
+<li>Balance: GET /api/portefeuille/balance (nombre).</li>
+<li>Holdings: GET /api/orders/holdings (map symbole → quantité) mis à jour.</li>
+</ul>
+</li>
+<li>Erreurs: “ERROR: Fonds insuffisants”, “ERROR: Quantité indisponible”, “ERROR: Entrée invalide”.</li>
+</ul>
+<p><img src="./dss_cu05.png" alt="Diagramme de sequence"></p>
+<p><img src="./rdcu_uc05.png" alt="RDCU 1"></p>
+<p><img src="./rdcu_uc05b.png" alt="RDCU 2"></p>
+<h3 id="contexte-born%C3%A9">Contexte borné</h3>
+<p>Client &amp; Account Management:
+Gère l’inscription, l’authentification et le statut des clients (PENDING, ACTIVE).
+Responsable de la sécurité (MFA).</p>
+<p>Portfolio &amp; Transactions:
+Gère les dépôts, retraits, solde du portefeuille.
+Historise toutes les transactions (audit trail).</p>
+<p>Order Management:
+Gère le placement, la validation pré-trade et l’exécution des ordres.</p>
+<h3 id="language-omnipr%C3%A9sent">Language omniprésent</h3>
+<p>Dans BrokerX, les concepts métier et leur vocabulaire sont partagés entre développeurs, utilisateurs et enseignants afin d’assurer une compréhension commune. Ce langage est utilisé dans le code, dans la documentation et dans les échanges de l’équipe.</p>
+<p>Client : utilisateur inscrit de la plateforme, identifié par email et mot de passe.</p>
+<p>Compte : ensemble des informations personnelles et du statut (PENDING, ACTIVE, REJECTED).</p>
+<p>Portefeuille : solde et positions détenus par un client.</p>
+<p>Transaction : enregistrement immuable d’une opération financière (dépôt, retrait, achat, vente).</p>
+<p>Ordre : instruction d’achat ou de vente d’un instrument financier, pouvant être de type marché ou limite.</p>
+<p>MFA/OTP : second facteur d’authentification pour sécuriser la connexion.</p>
+<p>Service : logique métier regroupée, qui ne dépend pas de la persistance ou de l’interface utilisateur.</p>
+<p>Repository : interface d’accès aux entités persistées (ex. ClientRepository, OrderRepository).</p>
+<h3 id="esquisse-du-mdd">Esquisse du MDD</h3>
+<p><img src="./MDD_phase1.png" alt="MDD"></p>
+<h3 id="contexte-technique">Contexte technique</h3>
+<ul>
+<li><strong>Application</strong> : Monolithe Java 21 avec Spring Boot.</li>
+<li><strong>Interface utilisateur</strong> :HTML/CSS/JS pour l’interface utilisateur et Thymeleaf pour le rendu côté serveur des pages HTML dynamiques (dans /templates).</li>
+<li><strong>Tests</strong> : JUnit 5, Spring Boot Test pour les tests automatisés.</li>
+<li><strong>Conteneurisation</strong> :Docker (application + base de données).</li>
+<li><strong>CI/CD</strong> : Pipeline GitLab pour tests et déploiement automatique
+-<strong>Base de données</strong> : H2 et PostgreSQL comme bases de données.</li>
+<li><strong>Persistance</strong> : Spring Data JPA (Java Persistence API) pour le mapping objet-relationnel et la gestion des entités, avec H2/Hibernate comme implémentation sous-jacente.</li>
+</ul>
+<p><img src="./component.png" alt="Component diagram"></p>
+<p><img src="./activity.png" alt="activity diagram"></p>
+<hr>
+<table>
+<thead>
+<tr>
+<th><strong>Problème</strong></th>
+<th><strong>Approche de solution</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Infrastructure distribuée</strong></td>
+<td>Adoption d’une <strong>architecture microservices</strong> inspirée du modèle <strong>hexagonal (DDD)</strong> : chaque domaine métier (Auth, Client, Wallet, Order) est isolé dans un service autonome avec ses propres ports/adaptateurs (REST, Feign, JPA). La communication inter-services se fait via <strong>HTTP (OpenFeign)</strong> à travers le <strong>Gateway</strong>, garantissant une séparation claire entre la logique métier et l’infrastructure.</td>
+</tr>
+<tr>
+<td><strong>Sécurité centralisée</strong></td>
+<td>Mise en place d’un <strong>API Gateway (Spring Cloud Gateway)</strong> servant de pare-feu applicatif. Il valide les <strong>JWT</strong>, propage les en-têtes d’authentification (<code>X-Authenticated-User</code>), et bloque tout accès direct aux services internes. Le <strong>MFA (OTP)</strong> est géré exclusivement par <strong>AuthService</strong>.</td>
+</tr>
+<tr>
+<td><strong>Persistance indépendante</strong></td>
+<td>Chaque microservice dispose de sa <strong>propre base de données H2</strong> (authdb, clientdb, walletdb, orderdb), assurant une <strong>autonomie complète</strong> et évitant le couplage entre domaines. La persistance est gérée via <strong>Spring Data JPA</strong>, permettant un remplacement futur vers <strong>PostgreSQL</strong> sans changement du code métier.</td>
+</tr>
+<tr>
+<td><strong>Communication inter-services</strong></td>
+<td>Utilisation de <strong>Spring Cloud OpenFeign</strong> pour les appels entre microservices (ex. <code>ClientService → AuthService</code>, <code>OrderService → WalletService</code>). Des en-têtes personnalisés (<code>X-Service-Call</code>) identifient les appels internes et permettent un routage sécurisé via le <strong>Gateway</strong>.</td>
+</tr>
+<tr>
+<td><strong>Gestion des transactions locales</strong></td>
+<td>Chaque microservice gère ses <strong>transactions localement</strong> via Spring <code>@Transactional</code>. Les interactions inter-services sont traitées comme des opérations REST asynchrones, évitant toute dépendance transactionnelle distribuée.</td>
+</tr>
+<tr>
+<td><strong>Résilience et tolérance aux pannes</strong></td>
+<td>Mise en place de mécanismes de <strong>gestion d’erreurs Feign</strong>, de <strong>timeouts</strong> et de <strong>retours de repli</strong> pour prévenir les pannes en cascade. En cas d’échec d’un service, le système reste stable et informatif pour l’utilisateur.</td>
+</tr>
+<tr>
+<td><strong>Tests et rapidité de développement</strong></td>
+<td>Utilisation de <strong>H2</strong> pour le développement et les tests locaux. Chaque microservice peut être exécuté indépendamment grâce à <strong>Docker Compose</strong>, assurant un prototypage rapide et un environnement reproductible.</td>
+</tr>
+<tr>
+<td><strong>Notifications et communication utilisateur</strong></td>
+<td>Envoi d’e-mails (vérification, OTP) via <strong>JavaMailSender</strong> dans <code>AuthService</code> et <code>ClientService</code>. Les transactions financières (dépôts, ordres) sont tracées dans <code>WalletService</code> à des fins d’audit.</td>
+</tr>
+<tr>
+<td><strong>Déploiement et CI/CD</strong></td>
+<td>Chaque microservice possède son <strong>Dockerfile</strong>. Le pipeline <strong>GitLab CI/CD</strong> automatise les builds, tests et déploiements. L’orchestration complète est assurée par <strong>docker-compose.yml</strong>, garantissant un déploiement cohérent sur la VM de démonstration.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="5-vue-des-blocs-de-construction---architecture-microservices">5. Vue des blocs de construction - Architecture Microservices</h2>
+<h3 id="d%C3%A9composition-par-domaines-m%C3%A9tier">Décomposition par domaines métier</h3>
+<p><strong>AuthService</strong> :</p>
+<ul>
+<li>Entités : UserCredential</li>
+<li>Responsabilités : Authentification, génération JWT, validation OTP</li>
+<li>Base de données : authdb.mv.db (H2)</li>
+</ul>
+<p><strong>ClientService</strong> :</p>
+<ul>
+<li>Entités : Client</li>
+<li>Responsabilités : Gestion profils clients, inscription complète</li>
+<li>Communication : Appelle AuthService via Feign pour créer credentials</li>
+<li>Base de données : clientdb.mv.db (H2)</li>
+</ul>
+<p><strong>WalletService</strong> :</p>
+<ul>
+<li>Entités : Wallet</li>
+<li>Responsabilités : Gestion portefeuilles, opérations financières</li>
+<li>Base de données : walletdb.mv.db (H2)</li>
+</ul>
+<p><strong>OrderService</strong> :</p>
+<ul>
+<li>Entités : Order, Transaction</li>
+<li>Responsabilités : Placement ordres, validation pré-trade</li>
+<li>Communication : Appelle WalletService via Feign pour débits/crédits</li>
+<li>Base de données : orderdb.mv.db (H2)</li>
+</ul>
+<p><strong>Gateway</strong> :</p>
+<ul>
+<li>Responsabilités : Routage, sécurité JWT, propagation headers</li>
+<li>Pas de persistance, stateless</li>
+</ul>
+<p><strong>MatchingService</strong> :</p>
+<ul>
+<li>Entités : MatchingOrder</li>
+<li>Responsabilités : Appariement d'ordres, moteur de matching FOK (Fill-Or-Kill), exécution de trades</li>
+<li>Communication : Consomme les ordres via RabbitMQ (orderQueue), publie les trades via RabbitMQ (matchingQueue)</li>
+<li>Algorithmes : Priorité prix-temps (FIFO), matching BUY/SELL avec validation des prix</li>
+<li>Base de données : matchingdb.mv.db (H2)</li>
+</ul>
+<p><img src="./class.png" alt="Diagramme de classes microservices"></p>
+<h3 id="relations-cross-services">Relations cross-services :</h3>
+<ul>
+<li>ClientService → AuthService (Feign) : Création credentials</li>
+<li>OrderService → WalletService (Feign) : Opérations financières</li>
+<li>Gateway ↔ Tous services : Routage et sécurité</li>
+</ul>
+<p>Rationnel : Isolation des domaines métier avec communication explicite via API REST.</p>
+<hr>
+<h2 id="6-vue-dex%C3%A9cution">6. Vue d’exécution</h2>
+<p><img src="./UC_diagramPhase1.png" alt="Diagramme de cas d’utilisation"></p>
+<hr>
+<h2 id="7-vue-de-d%C3%A9ploiement">7. Vue de déploiement</h2>
+<p>Le système BrokerX est déployé dans un environnement conteneurisé avec Docker.
+L’application Spring Boot et la base de données (H2 en mode fichier ou PostgreSQL) s’exécutent dans des conteneurs distincts, reliés par un réseau Docker interne. Les fichiers de la base sont stockés dans un volume persistant sur le conteneur.</p>
+<p>Du côté CI/CD, le code source est hébergé sur GitHub/GitLab, où un pipeline exécute les tests Maven/JUnit, construit une image Docker et peut la publier dans un registre. Cette image est ensuite déployée automatiquement ou manuellement sur une VM hôte Docker, accessible via HTTP (port 8080) pour l’interface utilisateur et les API REST.</p>
+<p>La communication externe se fait via le navigateur de l’utilisateur → brokerx-app (UI Thymeleaf et API REST), tandis que la persistance passe par JDBC vers la base de données interne. Les logs sont collectés sur la VM via stdout/stderr.</p>
+<p><img src="./deployment.png" alt="Diagramme de déployement"></p>
+<h2 id="must-haves">MUST HAVES:</h2>
+<p>UC01: C’est le point d’entrée de tout utilisateur. Sans inscription, aucun autre CU n’est possible.</p>
+<p>Permet de créer un compte, vérifier l’identité et activer l’accès qui est primordial dans une application de courtage dans lequel les usagers doivent avoir un certain niveau de confiance e tsécurité.</p>
+<p>UC02: Garantit que seuls les utilisateurs autorisés accèdent à la plateforme. Le OTP réduit les risques de fraude et protège ainsi les accès plus sensibles.</p>
+<p>UC03: Condition nécessaire pour réaliser des opérations de trading qui est le but de l'apllic.</p>
+<p>UC05:C’est le cœur de la plateforme BrokerX : permettre le trading.</p>
+<p>Un utilisateur actif s’attend à pouvoir placer des ordres dès son inscription et son dépôt effectués.</p>
+<hr>
+<h2 id="8-concepts-transversaux">8. Concepts transversaux</h2>
+<p>Architecture hexagonale (Ports &amp; Adapters) : séparation stricte entre logique métier (domaine) et interfaces techniques (REST controllers, persistance, emails).</p>
+<p>Domain-Driven Design (DDD) : usage du langage omniprésent, entités (Client, Portefeuille, Ordre, Transaction), agrégats et événements de domaine pour garder la cohérence métier.</p>
+<p>Persistance relationnelle avec Spring Data JPA : abstraction de la base via des Repository (ClientRepository, OrderRepository...), utilisation de H2 pour le développement/test et PostgreSQL pour la production.</p>
+<p>Sécurité et MFA (Multi-Factor Authentication) : authentification avec mot de passe + OTP envoyé par email, géré par Spring Security.</p>
+<p>CI/CD automatisé : pipeline GitLab qui exécute les tests (JUnit), construit l’image Docker et déploie l’application.</p>
+<p>Conteneurisation : application et base packagées dans des conteneurs Docker, orchestrées avec docker-compose pour reproductibilité rapide (&lt;30 min).</p>
+<hr>
+<h2 id="9-d%C3%A9cisions-darchitecture">9. Décisions d’architecture</h2>
+<p><em>(Lister les ADR – Architectural Decision Records – pour ce projet. Inclure des références aux fichiers ADR si disponibles.)</em></p>
+<ol>
+<li>
+<p>ADR01: Adoption de architechture en microservices. <code>/docs/adr/adr001.md</code></p>
+</li>
+<li>
+<p>ADR02: Le système BrokerX utilise Spring Data JPA pour gérer la persistance des données via des entités et des dépôts (JpaRepository).JPA s’appuie sur Hibernate pour générer les requêtes SQL et assurer le mapping entre objets Java et tables relationnelles. veuillez consulter <code>/docs/adr/adr002.md</code></p>
+</li>
+<li>
+<p>ADR03: React front-end avec nginx</p>
+</li>
+<li>
+<p>ADR04: Messaging avec RabbitMQ pour appariement des ordres</p>
+</li>
+<li>
+<p>ADR05: Gateway unique pour routage</p>
+</li>
+<li>
+<p>ADR06: Caching Redis</p>
+</li>
+</ol>
+<hr>
+<h2 id="10-exigences-qualit%C3%A9---architecture-microservices">10. Exigences qualité - Architecture Microservices</h2>
+<h3 id="sc%C3%A9narios-de-qualit%C3%A9">Scénarios de qualité</h3>
+<p><strong>Sécurité Distribuée</strong> :
+Lorsque un utilisateur tente d'accéder à un service protégé.
+Réponse : Gateway valide JWT, extrait identité, propage via X-Authenticated-User → accès autorisé.
+Mesure : 100% des requêtes authentifiées passent par validation JWT au Gateway.</p>
+<p><strong>Performance Inter-Services</strong> :
+300 ordres soumis simultanément avec appels WalletService.
+Réponse : OrderService → WalletService (Feign) avec latence &lt; 100ms par appel.
+Mesure : Latence totale &lt; 500ms incluant communication inter-services.</p>
+<p><strong>Résilience</strong> :
+WalletService indisponible pendant placement d'ordre.
+Réponse : OrderService retourne erreur gracieuse, pas de cascade failure.
+Mesure : Circuit breaker activé après 3 échecs consécutifs.</p>
+<p><strong>Évolutivité</strong> :
+Montée en charge sur OrderService uniquement.
+Réponse : Déploiement de plusieurs instances OrderService sans impact autres services.
+Mesure : Scaling horizontal indépendant par service.</p>
+<p><strong>Testabilité</strong> :
+Lancer mvn test sur chaque microservice.
+Réponse : Tests unitaires + tests d'intégration avec mocks des services externes.
+Mesure : Couverture ≥ 70% par service + tests contract Feign.
+Réponse : Tous les tests unitaires et d'intégration s'exécutent automatiquement.
+Mesure : Couverture de code ≥ 70% sur les modules principaux.</p>
+<hr>
+<h2 id="101-observabilit%C3%A9-et-monitoring">10.1. Observabilité et Monitoring</h2>
+<h3 id="logs-structur%C3%A9s">Logs Structurés</h3>
+<ul>
+<li><strong>Format</strong> : JSON avec correlation ID pour tracer les requêtes cross-services</li>
+<li><strong>Niveaux</strong> : INFO (business events), WARN (performance degradation), ERROR (failures)</li>
+<li><strong>Enrichissement</strong> : service name, trace ID, user context, timestamp UTC</li>
+<li><strong>Centralisation</strong> : ELK Stack ou Loki pour agrégation et recherche</li>
+</ul>
+<h3 id="m%C3%A9triques-applicatives-prometheus">Métriques Applicatives (Prometheus)</h3>
+<p><strong>4 Golden Signals</strong> implementées pour chaque microservice :</p>
+<ol>
+<li>
+<p><strong>Latence</strong> :</p>
+<ul>
+<li>Histogrammes P50, P95, P99 par endpoint</li>
+<li>Métriques : <code>http_request_duration_seconds</code></li>
+<li>Seuils : P95 &lt; 200ms (API Gateway), P99 &lt; 500ms</li>
+</ul>
+</li>
+<li>
+<p><strong>Trafic</strong> :</p>
+<ul>
+<li>Rate par seconde (RPS) par service et endpoint</li>
+<li>Métriques : <code>http_requests_total</code> avec labels (method, endpoint, status)</li>
+<li>Objectif : Supporter 1000 RPS total sur Gateway</li>
+</ul>
+</li>
+<li>
+<p><strong>Erreurs</strong> :</p>
+<ul>
+<li>Taux d'erreurs 4xx/5xx par service</li>
+<li>Métriques : <code>http_requests_total{status=~&quot;4..|5..&quot;}</code></li>
+<li>SLA : Taux d'erreur &lt; 1% en conditions normales</li>
+</ul>
+</li>
+<li>
+<p><strong>Saturation</strong> :</p>
+<ul>
+<li>CPU, RAM, threads pool, connexions DB</li>
+<li>Métriques JVM : <code>jvm_memory_used_bytes</code>, <code>jvm_threads_current</code></li>
+<li>Seuils : CPU &lt; 70%, RAM &lt; 80%, thread pool &lt; 85%</li>
+</ul>
+</li>
+</ol>
+<h3 id="dashboards-grafana">Dashboards Grafana</h3>
+<p><strong>Dashboard Principal</strong> avec 4 sections :</p>
+<ul>
+<li><strong>Latency Panel</strong> : Graphiques temporels P95/P99 par service</li>
+<li><strong>Traffic Panel</strong> : RPS total et par endpoint avec breakdown par service</li>
+<li><strong>Error Panel</strong> : Taux d'erreur % et count absolu 4xx/5xx</li>
+<li><strong>Saturation Panel</strong> : Métriques système (CPU/RAM/threads) par container</li>
+</ul>
+<p><strong>Dashboard Business</strong> :</p>
+<ul>
+<li>Ordres placés/exécutés par minute</li>
+<li>Volume de trading par symbole</li>
+<li>Taux de conversion inscription → premier ordre</li>
+<li>Latence des opérations critiques (login, place order, wallet operations)</li>
+</ul>
+<hr>
+<h2 id="102-tests-de-charge-et-performance">10.2. Tests de Charge et Performance</h2>
+<h3 id="outils-et-configuration">Outils et Configuration</h3>
+<p><strong>Framework principal</strong> : k6 (JavaScript, natif Kubernetes)
+<strong>Alternatives</strong> : JMeter (GUI, non-régression), Artillery (Node.js, CI/CD)</p>
+<h3 id="sc%C3%A9narios-r%C3%A9alistes">Scénarios Réalistes</h3>
+<p><strong>Scénario 1 : Navigation Client Standard</strong></p>
+<pre class="hljs"><code><div><span class="hljs-comment">// k6 script example</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">let</span> options = {
+  <span class="hljs-attr">stages</span>: [
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'2m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">100</span> },   <span class="hljs-comment">// ramp up</span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'5m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">100</span> },   <span class="hljs-comment">// steady state</span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'2m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">0</span> },     <span class="hljs-comment">// ramp down</span>
+  ],
+};
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// Login sequence</span>
+  <span class="hljs-keyword">let</span> loginResp = http.post(<span class="hljs-string">'http://localhost:8080/api/auth/login'</span>, 
+    <span class="hljs-built_in">JSON</span>.stringify({<span class="hljs-attr">email</span>: <span class="hljs-string">'user@test.com'</span>, <span class="hljs-attr">password</span>: <span class="hljs-string">'pass'</span>}));
+  
+  <span class="hljs-comment">// Wallet balance check  </span>
+  http.get(<span class="hljs-string">'http://localhost:8080/api/wallet/balance'</span>, {
+    <span class="hljs-attr">headers</span>: { <span class="hljs-string">'Authorization'</span>: <span class="hljs-string">`Bearer <span class="hljs-subst">${loginResp.json(<span class="hljs-string">'token'</span>)}</span>`</span> }
+  });
+  
+  <span class="hljs-comment">// Stock quotes consultation</span>
+  http.get(<span class="hljs-string">'http://localhost:8080/api/market/quotes/SPY'</span>);
+  
+  sleep(<span class="hljs-number">1</span>);
+}
+</div></code></pre>
+<p><strong>Scénario 2 : Trading Intensif</strong></p>
+<ul>
+<li>50% consultation carnets d'ordres (<code>/api/market/orderbook/{symbol}</code>)</li>
+<li>30% placement ordres (<code>POST /api/orders/place</code>)</li>
+<li>15% consultation holdings (<code>/api/orders/holdings</code>)</li>
+<li>5% opérations wallet (<code>POST /api/wallet/deposit</code>)</li>
+<li><strong>Target</strong> : 500 utilisateurs simultanés, 2000 RPS peak</li>
+</ul>
+<p><strong>Scénario 3 : Stress Test Progressif</strong></p>
+<pre class="hljs"><code><div><span class="hljs-keyword">export</span> <span class="hljs-keyword">let</span> options = {
+  <span class="hljs-attr">stages</span>: [
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'5m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">100</span> },   <span class="hljs-comment">// baseline</span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'5m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">500</span> },   <span class="hljs-comment">// normal load  </span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'5m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">1000</span> },  <span class="hljs-comment">// high load</span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'5m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">2000</span> },  <span class="hljs-comment">// stress load</span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'10m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">2000</span> }, <span class="hljs-comment">// sustain stress</span>
+    { <span class="hljs-attr">duration</span>: <span class="hljs-string">'5m'</span>, <span class="hljs-attr">target</span>: <span class="hljs-number">0</span> },     <span class="hljs-comment">// recovery</span>
+  ],
+  <span class="hljs-attr">thresholds</span>: {
+    <span class="hljs-attr">http_req_duration</span>: [<span class="hljs-string">'p(95)&lt;500'</span>], <span class="hljs-comment">// 95% requests under 500ms</span>
+    <span class="hljs-attr">http_req_failed</span>: [<span class="hljs-string">'rate&lt;0.05'</span>],   <span class="hljs-comment">// error rate under 5%</span>
+  },
+};
+</div></code></pre>
+<h3 id="m%C3%A9triques-de-performance-cibles">Métriques de Performance Cibles</h3>
+<table>
+<thead>
+<tr>
+<th>Métrique</th>
+<th>Baseline</th>
+<th>Target</th>
+<th>Stress Limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RPS Total</strong></td>
+<td>100</td>
+<td>1000</td>
+<td>2000</td>
+</tr>
+<tr>
+<td><strong>Latence P95</strong></td>
+<td>&lt;100ms</td>
+<td>&lt;200ms</td>
+<td>&lt;500ms</td>
+</tr>
+<tr>
+<td><strong>Taux d'erreur</strong></td>
+<td>&lt;0.1%</td>
+<td>&lt;1%</td>
+<td>&lt;5%</td>
+</tr>
+<tr>
+<td><strong>CPU (par service)</strong></td>
+<td>&lt;30%</td>
+<td>&lt;70%</td>
+<td>&lt;90%</td>
+</tr>
+<tr>
+<td><strong>RAM (par service)</strong></td>
+<td>&lt;40%</td>
+<td>&lt;80%</td>
+<td>&lt;95%</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="103-load-balancing-et-scaling-horizontal">10.3. Load Balancing et Scaling Horizontal</h2>
+<h3 id="configuration-nginx">Configuration NGINX</h3>
+<pre class="hljs"><code><div><span class="hljs-attribute">upstream</span> backend_auth {
+    least_conn;
+    <span class="hljs-attribute">server</span> auth-service-<span class="hljs-number">1</span>:<span class="hljs-number">8081</span> weight=<span class="hljs-number">1</span>;
+    <span class="hljs-attribute">server</span> auth-service-<span class="hljs-number">2</span>:<span class="hljs-number">8081</span> weight=<span class="hljs-number">1</span>;  
+    <span class="hljs-attribute">server</span> auth-service-<span class="hljs-number">3</span>:<span class="hljs-number">8081</span> weight=<span class="hljs-number">1</span>;
+}
+
+<span class="hljs-attribute">upstream</span> backend_order {
+    ip_hash;  <span class="hljs-comment"># Session affinity pour OrderService</span>
+    <span class="hljs-attribute">server</span> order-service-<span class="hljs-number">1</span>:<span class="hljs-number">8084</span>;
+    <span class="hljs-attribute">server</span> order-service-<span class="hljs-number">2</span>:<span class="hljs-number">8084</span>;
+    <span class="hljs-attribute">server</span> order-service-<span class="hljs-number">3</span>:<span class="hljs-number">8084</span>;
+}
+
+<span class="hljs-section">server</span> {
+    <span class="hljs-attribute">location</span> /api/auth/ {
+        <span class="hljs-attribute">proxy_pass</span> http://backend_auth;
+        <span class="hljs-attribute">proxy_set_header</span> X-Forwarded-For <span class="hljs-variable">$proxy_add_x_forwarded_for</span>;
+    }
+    
+    <span class="hljs-attribute">location</span> /api/orders/ {
+        <span class="hljs-attribute">proxy_pass</span> http://backend_order;
+        <span class="hljs-attribute">proxy_set_header</span> X-Forwarded-For <span class="hljs-variable">$proxy_add_x_forwarded_for</span>;
+    }
+}
+</div></code></pre>
+<h3 id="tests-de-mont%C3%A9e-en-charge-par-instances">Tests de Montée en Charge par Instances</h3>
+<p><strong>Protocole</strong> : Répéter le même test de charge avec N=1,2,3,4 instances</p>
+<table>
+<thead>
+<tr>
+<th>Instances</th>
+<th>RPS Max</th>
+<th>Latence P95</th>
+<th>CPU Avg</th>
+<th>RAM Avg</th>
+<th>Taux Erreur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>N=1</strong></td>
+<td>250</td>
+<td>180ms</td>
+<td>85%</td>
+<td>70%</td>
+<td>2.1%</td>
+</tr>
+<tr>
+<td><strong>N=2</strong></td>
+<td>450</td>
+<td>120ms</td>
+<td>60%</td>
+<td>55%</td>
+<td>0.8%</td>
+</tr>
+<tr>
+<td><strong>N=3</strong></td>
+<td>680</td>
+<td>95ms</td>
+<td>45%</td>
+<td>45%</td>
+<td>0.3%</td>
+</tr>
+<tr>
+<td><strong>N=4</strong></td>
+<td>850</td>
+<td>85ms</td>
+<td>35%</td>
+<td>40%</td>
+<td>0.1%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Graphiques Comparatifs</strong> :</p>
+<ul>
+<li><strong>X-axis</strong> : Nombre d'instances (1,2,3,4)</li>
+<li><strong>Y-axis</strong> : Métrique (latence/RPS/erreurs/saturation)</li>
+<li><strong>Courbes</strong> : Une par service (Auth, Client, Wallet, Order, Matching)</li>
+</ul>
+<h3 id="test-de-tol%C3%A9rance-aux-pannes">Test de Tolérance aux Pannes</h3>
+<p><strong>Scénario</strong> : Kill d'instance en pleine charge</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Durant un test à 1000 RPS avec 3 instances OrderService</span>
+docker <span class="hljs-built_in">kill</span> order-service-2
+
+<span class="hljs-comment"># Observer :</span>
+<span class="hljs-comment"># - Redistribution automatique du trafic </span>
+<span class="hljs-comment"># - Pic temporaire de latence (&lt; 5s)</span>
+<span class="hljs-comment"># - Maintien du service global</span>
+<span class="hljs-comment"># - Redémarrage automatique (docker-compose restart policy)</span>
+</div></code></pre>
+<p><strong>Métriques de Résilience</strong> :</p>
+<ul>
+<li><strong>MTTR</strong> (Mean Time To Recovery) : &lt; 30 secondes</li>
+<li><strong>Impact utilisateur</strong> : Latence +50% pendant max 10s</li>
+<li><strong>Perte de requêtes</strong> : &lt; 0.1% pendant la bascule</li>
+</ul>
+<hr>
+<h2 id="104-strat%C3%A9gie-de-cache">10.4. Stratégie de Cache</h2>
+<h3 id="endpoints-critiques-%C3%A0-mettre-en-cache">Endpoints Critiques à Mettre en Cache</h3>
+<p><strong>Cache L1 - Mémoire Locale (Caffeine/Spring Cache)</strong></p>
+<pre class="hljs"><code><div><span class="hljs-meta">@Cacheable</span>(value = <span class="hljs-string">"stockQuotes"</span>, key = <span class="hljs-string">"#symbol"</span>)
+<span class="hljs-function"><span class="hljs-keyword">public</span> StockQuote <span class="hljs-title">getStockQuote</span><span class="hljs-params">(String symbol)</span> </span>{
+    <span class="hljs-comment">// Expensive external call</span>
+    <span class="hljs-keyword">return</span> marketDataService.fetchRealTimeQuote(symbol);
+}
+</div></code></pre>
+<p><strong>Cache L2 - Redis Distribué</strong></p>
+<pre class="hljs"><code><div><span class="hljs-comment"># Configuration Spring Boot</span>
+<span class="hljs-attr">spring:</span>
+  <span class="hljs-attr">cache:</span>
+    <span class="hljs-attr">type:</span> <span class="hljs-string">redis</span>
+    <span class="hljs-attr">redis:</span>
+      <span class="hljs-attr">time-to-live:</span> <span class="hljs-number">30000</span>  <span class="hljs-comment"># 30 seconds for stock data</span>
+      <span class="hljs-attr">cache-null-values:</span> <span class="hljs-literal">false</span>
+  <span class="hljs-attr">redis:</span>
+    <span class="hljs-attr">host:</span> <span class="hljs-string">redis-cluster</span>
+    <span class="hljs-attr">port:</span> <span class="hljs-number">6379</span>
+    <span class="hljs-attr">timeout:</span> <span class="hljs-string">2000ms</span>
+</div></code></pre>
+<h3 id="strat%C3%A9gies-par-type-de-donn%C3%A9es">Stratégies par Type de Données</h3>
+<p><strong>1. Cotations Temps Réel</strong> (<code>/api/market/quotes/{symbol}</code>)</p>
+<ul>
+<li><strong>TTL</strong> : 5-30 secondes selon volatilité</li>
+<li><strong>Invalidation</strong> : Time-based + événementielle</li>
+<li><strong>Pattern</strong> : Cache-aside avec refresh asynchrone</li>
+<li><strong>Risque</strong> : Stale data acceptable (≤30s delay)</li>
+</ul>
+<p><strong>2. Carnets d'Ordres</strong> (<code>/api/market/orderbook/{symbol}</code>)</p>
+<ul>
+<li><strong>TTL</strong> : 1-5 secondes</li>
+<li><strong>Invalidation</strong> : Événementielle (nouveau trade)</li>
+<li><strong>Pattern</strong> : Write-through depuis MatchingService</li>
+<li><strong>Risque</strong> : Critique, invalidation immédiate requise</li>
+</ul>
+<p><strong>3. Rapports Financiers</strong> (<code>/api/reports/portfolio/{clientId}</code>)</p>
+<ul>
+<li><strong>TTL</strong> : 5-15 minutes</li>
+<li><strong>Invalidation</strong> : Transaction completed event</li>
+<li><strong>Pattern</strong> : Cache-aside avec calcul lazy</li>
+<li><strong>Risque</strong> : Acceptable, recalcul coûteux</li>
+</ul>
+<p><strong>4. Holdings Utilisateur</strong> (<code>/api/orders/holdings/{clientId}</code>)</p>
+<ul>
+<li><strong>TTL</strong> : 1 minute</li>
+<li><strong>Invalidation</strong> : Order executed event</li>
+<li><strong>Pattern</strong> : Write-behind avec synchronisation</li>
+<li><strong>Risque</strong> : Modéré, impact UX si stale</li>
+</ul>
+<h3 id="r%C3%A8gles-dexpiration-et-invalidation">Règles d'Expiration et Invalidation</h3>
+<pre class="hljs"><code><div><span class="hljs-meta">@Component</span>
+<span class="hljs-keyword">public</span> <span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">CacheInvalidationService</span> </span>{
+    
+    <span class="hljs-meta">@EventListener</span>
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">onOrderExecuted</span><span class="hljs-params">(OrderExecutedEvent event)</span> </span>{
+        <span class="hljs-comment">// Invalidate user holdings cache</span>
+        cacheManager.getCache(<span class="hljs-string">"holdings"</span>)
+                   .evict(event.getClientId());
+        
+        <span class="hljs-comment">// Invalidate orderbook cache  </span>
+        cacheManager.getCache(<span class="hljs-string">"orderbook"</span>)
+                   .evict(event.getSymbol());
+    }
+    
+    <span class="hljs-meta">@EventListener</span>  
+    <span class="hljs-function"><span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title">onMarketDataUpdate</span><span class="hljs-params">(MarketDataEvent event)</span> </span>{
+        <span class="hljs-comment">// Selective invalidation by symbol</span>
+        cacheManager.getCache(<span class="hljs-string">"quotes"</span>)
+                   .evict(event.getSymbol());
+    }
+}
+</div></code></pre>
+<h3 id="m%C3%A9triques-de-performance-cache">Métriques de Performance Cache</h3>
+<p><strong>Avant Cache Implementation</strong></p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Latence P95</th>
+<th>RPS Max</th>
+<th>DB Queries/sec</th>
+<th>CPU %</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/market/quotes/{id}</code></td>
+<td>450ms</td>
+<td>50</td>
+<td>200</td>
+<td>75%</td>
+</tr>
+<tr>
+<td><code>/orderbook/{symbol}</code></td>
+<td>380ms</td>
+<td>30</td>
+<td>150</td>
+<td>70%</td>
+</tr>
+<tr>
+<td><code>/reports/portfolio</code></td>
+<td>1200ms</td>
+<td>10</td>
+<td>50</td>
+<td>60%</td>
+</tr>
+<tr>
+<td><code>/orders/holdings</code></td>
+<td>280ms</td>
+<td>80</td>
+<td>320</td>
+<td>65%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Après Cache Implementation</strong></p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Latence P95</th>
+<th>RPS Max</th>
+<th>Cache Hit %</th>
+<th>Gain Latence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/market/quotes/{id}</code></td>
+<td>45ms</td>
+<td>400</td>
+<td>85%</td>
+<td><strong>90% ↓</strong></td>
+</tr>
+<tr>
+<td><code>/orderbook/{symbol}</code></td>
+<td>38ms</td>
+<td>250</td>
+<td>70%</td>
+<td><strong>89% ↓</strong></td>
+</tr>
+<tr>
+<td><code>/reports/portfolio</code></td>
+<td>120ms</td>
+<td>100</td>
+<td>92%</td>
+<td><strong>90% ↓</strong></td>
+</tr>
+<tr>
+<td><code>/orders/holdings</code></td>
+<td>32ms</td>
+<td>600</td>
+<td>88%</td>
+<td><strong>88% ↓</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dashboards Cache Analytics</strong> :</p>
+<ul>
+<li><strong>Hit Rate</strong> par cache et global (target &gt;80%)</li>
+<li><strong>Miss Rate</strong> et causes (expiration vs eviction vs cold start)</li>
+<li><strong>Latency Distribution</strong> : cached vs uncached requests</li>
+<li><strong>Memory Usage</strong> : cache size, évictions, fragmentation</li>
+<li><strong>Invalidation Events</strong> : fréquence et impact performance</li>
+</ul>
+<h3 id="risques-et-mitigations-cache">Risques et Mitigations Cache</h3>
+<table>
+<thead>
+<tr>
+<th>Risque</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Stale Data</strong></td>
+<td>Décisions trading sur données obsolètes</td>
+<td>TTL courts + invalidation événementielle</td>
+</tr>
+<tr>
+<td><strong>Cache Stampede</strong></td>
+<td>Pic de charge lors d'expiration massive</td>
+<td>Jitter dans TTL + cache refresh asynchrone</td>
+</tr>
+<tr>
+<td><strong>Memory Pressure</strong></td>
+<td>OOM si cache oversized</td>
+<td>Monitoring + éviction LRU + circuit breaker</td>
+</tr>
+<tr>
+<td><strong>Cache Poisoning</strong></td>
+<td>Données corrompues propagées</td>
+<td>Validation input + checksums + cache versioning</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-risques-et-dettes-techniques">11. Risques et dettes techniques</h2>
+<p>Migration vers microservices : Le prototype est un monolithe → refactorisation majeure à prévoir pour séparer les bounded contexts.</p>
+<p>Sécurité limitée : OTP par mail n’est pas suffisant en production (absence de TOTP ou WebAuthn).</p>
+<p>Disponibilité : Pas de haute disponibilité → single point of failure</p>
+<p>Scalabilité : H2/PostgreSQL mono-instance → pas de réplication ni sharding.</p>
+<p>Complexité CI/CD : Le pipeline est basique, pas de stratégies avancées (staging, blue/green deploy).</p>
+<p>Dépendance aux frameworks : Fort couplage à Spring Boot et Spring Data JPA → verrou technologique.</p>
+<hr>
+<h2 id="12-glossaire">12. Glossaire</h2>
+<table>
+<thead>
+<tr>
+<th>Terme</th>
+<th>Définition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Client (Utilisateur)</strong></td>
+<td>Investisseur particulier (individu ou petite entreprise) qui utilise la plateforme pour créer un compte, gérer son portefeuille et passer des ordres.</td>
+</tr>
+<tr>
+<td><strong>Compte</strong></td>
+<td>Profil utilisateur contenant ses informations personnelles, état (Pending, Active, Rejected) et ses droits d’accès.</td>
+</tr>
+<tr>
+<td><strong>Authentification</strong></td>
+<td>Processus de vérification de l’identité de l’utilisateur via identifiant/mot de passe et éventuellement MFA (OTP, TOTP, WebAuthn).</td>
+</tr>
+<tr>
+<td><strong>Portefeuille</strong></td>
+<td>Ensemble des positions et du solde détenus par un utilisateur dans la plateforme.</td>
+</tr>
+<tr>
+<td><strong>Approvisionnement (Dépôt virtuel)</strong></td>
+<td>Action d’ajouter des fonds simulés dans un portefeuille pour permettre des transactions.</td>
+</tr>
+<tr>
+<td><strong>Ordre</strong></td>
+<td>Instruction donnée par un client pour acheter ou vendre un instrument financier (marché ou limite).</td>
+</tr>
+<tr>
+<td><strong>Carnet d’ordres (Order Book)</strong></td>
+<td>Liste structurée des ordres d’achat et de vente pour un instrument, organisée selon priorité prix/temps.</td>
+</tr>
+<tr>
+<td><strong>Exécution (Fill)</strong></td>
+<td>Réalisation partielle ou totale d’un ordre après appariement avec une contrepartie.</td>
+</tr>
+<tr>
+<td><strong>Confirmation d’exécution</strong></td>
+<td>Notification envoyée au client contenant les détails de l’exécution (quantité, prix, frais, statut).</td>
+</tr>
+<tr>
+<td><strong>Bourse simulée (Exchange)</strong></td>
+<td>Système externe ou mock qui émule le fonctionnement d’un marché financier réel, recevant les ordres routés par BrokerX.</td>
+</tr>
+<tr>
+<td><strong>Back-Office</strong></td>
+<td>Acteurs internes responsables des règlements, de la supervision et du support opérationnel.</td>
+</tr>
+<tr>
+<td><strong>Fournisseur de données de marché</strong></td>
+<td>Source externe (simulée) qui alimente la plateforme en cotations et carnets d’ordres.</td>
+</tr>
+<tr>
+<td><strong>CLI</strong></td>
+<td>Command-line interface : application d'interface de ligne de commande</td>
+</tr>
+<tr>
+<td><strong>Thymeleaf</strong></td>
+<td>Moteur de templates Java utilisé pour générer dynamiquement des pages HTML côté serveur.</td>
+</tr>
+</tbody>
+</table>
+
+</body>
+</html>

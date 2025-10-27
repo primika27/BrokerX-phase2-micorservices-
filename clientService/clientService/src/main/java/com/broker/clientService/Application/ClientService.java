@@ -29,16 +29,32 @@ public Client register(String name, String email, String motDePasse) {
         throw new IllegalArgumentException("Email already used");
     }
 
-    // 1. Tell Auth Service to register credentials
-    authClient.createUserCredential(new UserCredentialRequest(email, motDePasse));
-
-    // 2. Create the client profile
-    int verificationToken = UUID.randomUUID().hashCode();
-    Client client = new Client(0, name, email, verificationToken, "PENDING");
-    client = clientRepository.save(client);
-    sendVerificationEmail(client);
-    return client;
+    try {
+        // 1. Try to register with Auth Service
+        authClient.createUserCredential(new UserCredentialRequest(email, motDePasse));
+        
+        // 2. If successful, create the client profile
+        int verificationToken = UUID.randomUUID().hashCode();
+        Client client = new Client(0, name, email, verificationToken, "PENDING");
+        client = clientRepository.save(client);
+        sendVerificationEmail(client);
+        return client;
+        
+    } catch (Exception e) {
+        // If auth service says email already exists, create only the client profile
+        // This handles cases where user exists in auth but not in client service
+        if (e.getMessage() != null && e.getMessage().contains("already")) {
+            System.out.println("User exists in auth service, creating client profile for: " + email);
+            // Create client profile as ACTIVE since user already exists in auth
+            Client client = new Client(0, name, email, 0, "ACTIVE");
+            client = clientRepository.save(client);
+            return client;
+        } else {
+            // Re-throw other errors
+            throw new RuntimeException("Registration failed: " + e.getMessage(), e);
+        }
     }
+}
 
     public void sendVerificationEmail(Client client) {
         String to = client.getEmail();

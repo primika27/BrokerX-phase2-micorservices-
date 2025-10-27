@@ -2,10 +2,14 @@
 title UC01b - Envoi d'un email de vérification
 
 actor Client
+participant "Gateway" as Gateway
 participant "ClientService" as Service
 participant "JavaMailSender" as MailSender
 
--> Service : sendVerificationEmail(client)
+-> Gateway : sendVerificationEmail(client)
+
+Gateway -> Service : sendVerificationEmail(client)
+activate Service
 Service -> Service : generateVerificationUrl(client)
 Service -> Service : buildHtmlMessage(url)
 

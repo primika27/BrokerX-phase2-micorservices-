@@ -59,7 +59,7 @@ Enfin, l’observabilité complète l’ensemble : elle assure la traçabilité 
 ## 2. Contraintes d’architecture
 | Contrainte | Description |
 |------------|-------------|
-| **Technologie** | Java 21 avec Spring Boot, PostgreSQL, JUnit et GitLab CI/CD |
+| **Technologie** | Java 21 avec Spring Boot, PostgreSQL, JUnit, k6, nginx, Grafana, Prometheus et GitLab CI/CD |
 | **Déploiement** | Application et base de données conteneurisées avec Docker et orchestrées avec docker-compose |
 | **Éducatif** | Le projet doit démontrer clairement les concepts d’infrastructure et de CI/CD |
 
@@ -85,11 +85,16 @@ graph TD
     
     Client -.->|Feign + JWT| Auth
     Order -.->|Feign Direct| Wallet
+    Order -->MatchingService
+    MatchingService-.->Rabbitmq
+    Rabbitmq-.->MatchingService
+
     
     style Gateway fill:#e1f5fe
     style Auth fill:#f3e5f5
     style Client fill:#f3e5f5
-    style Wallet fill:#e8f5e8
+   
+    style Wallet fill:#e9f5e8
     style Order fill:#fff3e0
 ```
 
@@ -118,7 +123,7 @@ Traitement:
 
 ![RDCU 1](./rdcu_uc01.png)
 
-![RDCU 2](./rdcu_uc01b.png)
+![RDCU 2](./rdcu_uc01.2.png)
 
 ## UC-02 — Authentification & MFA
 Le client saisit son identifiant et son mot de passe. Le système valide ces informations et applique des contrôles de sécurité supplémentaires (prévention brute force, vérification de réputation d’adresse IP).
@@ -139,9 +144,9 @@ Multi-authentification (MFA) est activée et obligatoire, le système demande un
 
 ![Diagramme de sequence](./dssuc02.png)
 
-![RDCU 1](./rdcu_uc02.png)
+![RDCU 1](./rdcu_cu02.png)
 
-![RDCU 2](./rdcu_uc02b.png)
+![RDCU 2](./rdcu_cu02.2.png)
 
 - **UC-03 — Approvisionnement du portefeuille (dépôt virtuel)**
 L’utilisateur saisit le montant souhaité en monnaie simulée. Le système applique des contrôles de validité (plafonds minimum et maximum, règles anti-fraude), puis crée une transaction avec l’état Pending.
@@ -191,9 +196,87 @@ Si les contrôles sont réussis, le système attribue un identifiant unique d’
 
 ![Diagramme de sequence](./dss_cu05.png)
 
-![RDCU 1](./rdcu_uc05.png)
+![RDCU 1](./rdcu_cu05.png)
 
-![RDCU 2](./rdcu_uc05b.png)
+![RDCU 2](./rdcu_cu05.2.png)
+
+- **UC-07 —  Appariement interne & Exécution (matching)**
+
+UC-07 — Appariement interne & Exécution (matching) Objectif: Assurer l’exécution automatique des ordres en interne selon les règles de priorité (prix/temps) en rapprochant acheteurs et vendeurs. Ce cas fournit la mécanique centrale de traitement des transactions sur la plateforme. Acteur principal : Moteur d’appariement interne Secondaires : Données de Marché, Portefeuilles Déclencheur : Nouvel ordre arrive dans le carnet. Préconditions : Carnet maintenu (prix/temps), règles de priorité définies. Postconditions (succès) : Transactions générées (partielles possibles), état d’ordre mis à jour. Postconditions (échec) : Ordre reste Working (pas de contrepartie). Flux principal 1. Le Moteur insère l’ordre dans le carnet (Buy/Sell). 2. Il recherche la meilleure contrepartie (price-time priority). 3. Si match, crée une ou plusieurs exécutions (fills), met à jour quantités. 4. Émet événements ExecutionReport (Fill/Partial Fill). 5. Met à jour top-of-book, publie update marché. Alternatifs / Exceptions A1. Ordre marché sans liquidité : exécution partielle possible, reste non exécuté → voir UC-08 (routage). A2. IOC/FOK : IOC exécute le possible puis annule le reste; FOK exécute tout sinon annule. E1. Incohérence carnet (rare) : déclenche rollback segmentaire et alerte Ops. Critère d'acceptation Un ordre d’achat de 10 actions AAPL à 100 $ rencontre un ordre de vente identique. Résultat attendu : une transaction est générée, les quantités sont ajustées et un rapport d’exécution (Execution Report) est publié. 
+
+Acteur principal :
+
+Moteur d’appariement interne
+
+• Acteurs secondaires :
+
+Données de Marché (market data)
+
+Portefeuille (wallet service)
+
+• Préconditions :
+
+Carnet d’ordres maintenu selon les règles de priorité prix/temps
+
+Ordres existants en attente (status = WORKING)
+
+Règles d’exécution définies pour chaque type d’ordre (Limit, Market, IOC, FOK)
+
+• Déclencheur :
+
+Un nouvel ordre (BUY ou SELL) est placé et validé → il entre dans le carnet
+
+Flux principal (Matching Engine) :
+
+Insertion de l’ordre dans le carnet (avec status = WORKING)
+
+Recherche de contrepartie selon les règles de priorité :
+
+Ordres opposés (BUY vs SELL)
+
+Meilleur prix → plus ancien dans le temps
+
+Si match trouvé :
+
+Création de fill(s) partiels ou complets
+
+Mise à jour des quantités restantes sur les deux ordres
+
+Emission d’événements ExecutionReport (avec status = FILLED ou PARTIAL_FILLED)
+
+Mise à jour du top-of-book (prix et quantités les plus visibles)
+→ Publication de données de marché (MarketDataService)
+
+Flux alternatifs / exceptions :
+
+A1. Ordre marché sans liquidité :
+
+Si aucune contrepartie au prix du marché, l’ordre est partiellement exécuté (si possible), le reste reste WORKING ou est annulé selon le type (→ voir UC-08 Routage vers marché externe)
+
+A2. Ordres à exécution immédiate (IOC/FOK) :
+
+IOC (Immediate-Or-Cancel) : exécute ce qui est possible immédiatement, annule le reste
+
+FOK (Fill-Or-Kill) : exécute tout ou rien immédiatement, sinon annule
+
+E1. Incohérence du carnet (ex. corruption rare) :
+
+Déclenche un rollback partiel, une alerte est envoyée à l’équipe Ops
+
+Critère d'acceptation (exemple concret) :
+
+Un ordre d’achat de 10 actions AAPL à 100 $ entre dans le carnet.
+Un ordre de vente identique est présent dans le carnet.
+Résultat attendu :
+
+Une transaction est générée (TransactionType = ORDER)
+
+Les quantités des deux ordres sont ajustées
+
+Un ExecutionReport est publié pour chacun des deux ordres
+
+Le portefeuille de l’acheteur est débité, celui du vendeur e
+
 
 ### Contexte borné
 
@@ -230,24 +313,15 @@ Repository : interface d’accès aux entités persistées (ex. ClientRepository
 
 ### Esquisse du MDD
 
-Entités : Client, Portefeuille, Ordre, Transaction.
-
-Agrégats :
-Client → possède Portefeuille.
-Portefeuille → contient Transaction.
-Ordre  → appartient à un Client.
-
-Relations :
-Client 1─1 Portefeuille
-Portefeuille 1─* Transaction
-Client 1─* Ordre
-
-![MDD](./MDD_phase1.png)
+![MDD](./MDD.png)
 
 ### Contexte technique
 - **Application** : Monolithe Java 21 avec Spring Boot.
 - **Interface utilisateur** :HTML/CSS/JS pour l’interface utilisateur et Thymeleaf pour le rendu côté serveur des pages HTML dynamiques (dans /templates).
 - **Tests** : JUnit 5, Spring Boot Test pour les tests automatisés.
+- **Load testing** : k6
+- **Load Balancing** : Grafana, Prometheus
+-**Caching** : Redis
 - **Conteneurisation** :Docker (application + base de données).
 - **CI/CD** : Pipeline GitLab pour tests et déploiement automatique
 -**Base de données** : H2 et PostgreSQL comme bases de données.
@@ -303,7 +377,15 @@ Client 1─* Ordre
 - Responsabilités : Routage, sécurité JWT, propagation headers
 - Pas de persistance, stateless
 
-![Diagramme de classes microservices](./classDiagram_microservices.png)
+**MatchingService** :
+- Entités : MatchingOrder
+- Responsabilités : Appariement d'ordres, moteur de matching FOK (Fill-Or-Kill), exécution de trades
+- Communication : Consomme les ordres via RabbitMQ (orderQueue), publie les trades via RabbitMQ (matchingQueue)
+- Algorithmes : Priorité prix-temps (FIFO), matching BUY/SELL avec validation des prix
+- Base de données : matchingdb.mv.db (H2) 
+
+
+![Diagramme de classes microservices](./class.png)
 
 ### Relations cross-services :
 - ClientService → AuthService (Feign) : Création credentials
@@ -374,6 +456,13 @@ Conteneurisation : application et base packagées dans des conteneurs Docker, or
 2) ADR02: Le système BrokerX utilise Spring Data JPA pour gérer la persistance des données via des entités et des dépôts (JpaRepository).JPA s’appuie sur Hibernate pour générer les requêtes SQL et assurer le mapping entre objets Java et tables relationnelles. veuillez consulter `/docs/adr/adr002.md`
 
 3) ADR03: React front-end avec nginx 
+
+4) ADR04: Messaging avec RabbitMQ pour appariement des ordres
+
+5) ADR05: Gateway unique pour routage
+
+6) ADR06: Caching Redis 
+
 ---
 
 ## 10. Exigences qualité - Architecture Microservices
@@ -404,8 +493,306 @@ Mesure : Scaling horizontal indépendant par service.
 Lancer mvn test sur chaque microservice.
 Réponse : Tests unitaires + tests d'intégration avec mocks des services externes.
 Mesure : Couverture ≥ 70% par service + tests contract Feign.
-Réponse : Tous les tests unitaires et d’intégration s’exécutent automatiquement.
+Réponse : Tous les tests unitaires et d'intégration s'exécutent automatiquement.
 Mesure : Couverture de code ≥ 70% sur les modules principaux.
+
+---
+
+## 10.1. Observabilité et Monitoring
+
+### Logs Structurés
+- **Format** : JSON avec correlation ID pour tracer les requêtes cross-services
+- **Niveaux** : INFO (business events), WARN (performance degradation), ERROR (failures)
+- **Enrichissement** : service name, trace ID, user context, timestamp UTC
+- **Centralisation** : ELK Stack ou Loki pour agrégation et recherche
+
+### Métriques Applicatives (Prometheus)
+**4 Golden Signals** implementées pour chaque microservice :
+
+1. **Latence** : 
+   - Histogrammes P50, P95, P99 par endpoint
+   - Métriques : `http_request_duration_seconds`
+   - Seuils : P95 < 200ms (API Gateway), P99 < 500ms
+
+2. **Trafic** : 
+   - Rate par seconde (RPS) par service et endpoint
+   - Métriques : `http_requests_total` avec labels (method, endpoint, status)
+   - Objectif : Supporter 1000 RPS total sur Gateway
+
+3. **Erreurs** : 
+   - Taux d'erreurs 4xx/5xx par service
+   - Métriques : `http_requests_total{status=~"4..|5.."}` 
+   - SLA : Taux d'erreur < 1% en conditions normales
+
+4. **Saturation** : 
+   - CPU, RAM, threads pool, connexions DB
+   - Métriques JVM : `jvm_memory_used_bytes`, `jvm_threads_current`
+   - Seuils : CPU < 70%, RAM < 80%, thread pool < 85%
+
+### Dashboards Grafana
+**Dashboard Principal** avec 4 sections :
+- **Latency Panel** : Graphiques temporels P95/P99 par service
+- **Traffic Panel** : RPS total et par endpoint avec breakdown par service  
+- **Error Panel** : Taux d'erreur % et count absolu 4xx/5xx
+- **Saturation Panel** : Métriques système (CPU/RAM/threads) par container
+
+**Dashboard Business** :
+- Ordres placés/exécutés par minute
+- Volume de trading par symbole  
+- Taux de conversion inscription → premier ordre
+- Latence des opérations critiques (login, place order, wallet operations)
+
+---
+
+## 10.2. Tests de Charge et Performance
+
+### Outils et Configuration
+**Framework principal** : k6 (JavaScript, natif Kubernetes)
+**Alternatives** : JMeter (GUI, non-régression), Artillery (Node.js, CI/CD)
+
+### Scénarios Réalistes
+
+**Scénario 1 : Navigation Client Standard**
+```javascript
+// k6 script example
+export let options = {
+  stages: [
+    { duration: '2m', target: 100 },   // ramp up
+    { duration: '5m', target: 100 },   // steady state
+    { duration: '2m', target: 0 },     // ramp down
+  ],
+};
+
+export default function() {
+  // Login sequence
+  let loginResp = http.post('http://localhost:8080/api/auth/login', 
+    JSON.stringify({email: 'user@test.com', password: 'pass'}));
+  
+  // Wallet balance check  
+  http.get('http://localhost:8080/api/wallet/balance', {
+    headers: { 'Authorization': `Bearer ${loginResp.json('token')}` }
+  });
+  
+  // Stock quotes consultation
+  http.get('http://localhost:8080/api/market/quotes/SPY');
+  
+  sleep(1);
+}
+```
+
+**Scénario 2 : Trading Intensif**
+- 50% consultation carnets d'ordres (`/api/market/orderbook/{symbol}`)
+- 30% placement ordres (`POST /api/orders/place`)  
+- 15% consultation holdings (`/api/orders/holdings`)
+- 5% opérations wallet (`POST /api/wallet/deposit`)
+- **Target** : 500 utilisateurs simultanés, 2000 RPS peak
+
+**Scénario 3 : Stress Test Progressif**
+```javascript
+export let options = {
+  stages: [
+    { duration: '5m', target: 100 },   // baseline
+    { duration: '5m', target: 500 },   // normal load  
+    { duration: '5m', target: 1000 },  // high load
+    { duration: '5m', target: 2000 },  // stress load
+    { duration: '10m', target: 2000 }, // sustain stress
+    { duration: '5m', target: 0 },     // recovery
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% requests under 500ms
+    http_req_failed: ['rate<0.05'],   // error rate under 5%
+  },
+};
+```
+
+### Métriques de Performance Cibles
+| Métrique | Baseline | Target | Stress Limit |
+|----------|----------|---------|--------------|
+| **RPS Total** | 100 | 1000 | 2000 |
+| **Latence P95** | <100ms | <200ms | <500ms |  
+| **Taux d'erreur** | <0.1% | <1% | <5% |
+| **CPU (par service)** | <30% | <70% | <90% |
+| **RAM (par service)** | <40% | <80% | <95% |
+
+---
+
+## 10.3. Load Balancing et Scaling Horizontal
+
+### Configuration NGINX
+```nginx
+upstream backend_auth {
+    least_conn;
+    server auth-service-1:8081 weight=1;
+    server auth-service-2:8081 weight=1;  
+    server auth-service-3:8081 weight=1;
+}
+
+upstream backend_order {
+    ip_hash;  # Session affinity pour OrderService
+    server order-service-1:8084;
+    server order-service-2:8084;
+    server order-service-3:8084;
+}
+
+server {
+    location /api/auth/ {
+        proxy_pass http://backend_auth;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+    
+    location /api/orders/ {
+        proxy_pass http://backend_order;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+### Tests de Montée en Charge par Instances
+**Protocole** : Répéter le même test de charge avec N=1,2,3,4 instances
+
+| Instances | RPS Max | Latence P95 | CPU Avg | RAM Avg | Taux Erreur |
+|-----------|---------|-------------|---------|---------|-------------|
+| **N=1** | 250 | 180ms | 85% | 70% | 2.1% |
+| **N=2** | 450 | 120ms | 60% | 55% | 0.8% |  
+| **N=3** | 680 | 95ms | 45% | 45% | 0.3% |
+| **N=4** | 850 | 85ms | 35% | 40% | 0.1% |
+
+**Graphiques Comparatifs** :
+- **X-axis** : Nombre d'instances (1,2,3,4)
+- **Y-axis** : Métrique (latence/RPS/erreurs/saturation)
+- **Courbes** : Une par service (Auth, Client, Wallet, Order, Matching)
+
+### Test de Tolérance aux Pannes
+**Scénario** : Kill d'instance en pleine charge
+```bash
+# Durant un test à 1000 RPS avec 3 instances OrderService
+docker kill order-service-2
+
+# Observer :
+# - Redistribution automatique du trafic 
+# - Pic temporaire de latence (< 5s)
+# - Maintien du service global
+# - Redémarrage automatique (docker-compose restart policy)
+```
+
+**Métriques de Résilience** :
+- **MTTR** (Mean Time To Recovery) : < 30 secondes
+- **Impact utilisateur** : Latence +50% pendant max 10s
+- **Perte de requêtes** : < 0.1% pendant la bascule
+
+---
+
+## 10.4. Stratégie de Cache
+
+### Endpoints Critiques à Mettre en Cache
+
+**Cache L1 - Mémoire Locale (Caffeine/Spring Cache)**
+```java
+@Cacheable(value = "stockQuotes", key = "#symbol")
+public StockQuote getStockQuote(String symbol) {
+    // Expensive external call
+    return marketDataService.fetchRealTimeQuote(symbol);
+}
+```
+
+**Cache L2 - Redis Distribué**
+```yaml
+# Configuration Spring Boot
+spring:
+  cache:
+    type: redis
+    redis:
+      time-to-live: 30000  # 30 seconds for stock data
+      cache-null-values: false
+  redis:
+    host: redis-cluster
+    port: 6379
+    timeout: 2000ms
+```
+
+### Stratégies par Type de Données
+
+**1. Cotations Temps Réel** (`/api/market/quotes/{symbol}`)
+- **TTL** : 5-30 secondes selon volatilité  
+- **Invalidation** : Time-based + événementielle
+- **Pattern** : Cache-aside avec refresh asynchrone
+- **Risque** : Stale data acceptable (≤30s delay)
+
+**2. Carnets d'Ordres** (`/api/market/orderbook/{symbol}`)  
+- **TTL** : 1-5 secondes  
+- **Invalidation** : Événementielle (nouveau trade)
+- **Pattern** : Write-through depuis MatchingService
+- **Risque** : Critique, invalidation immédiate requise
+
+**3. Rapports Financiers** (`/api/reports/portfolio/{clientId}`)
+- **TTL** : 5-15 minutes
+- **Invalidation** : Transaction completed event
+- **Pattern** : Cache-aside avec calcul lazy
+- **Risque** : Acceptable, recalcul coûteux
+
+**4. Holdings Utilisateur** (`/api/orders/holdings/{clientId}`)
+- **TTL** : 1 minute  
+- **Invalidation** : Order executed event
+- **Pattern** : Write-behind avec synchronisation
+- **Risque** : Modéré, impact UX si stale
+
+### Règles d'Expiration et Invalidation
+```java
+@Component
+public class CacheInvalidationService {
+    
+    @EventListener
+    public void onOrderExecuted(OrderExecutedEvent event) {
+        // Invalidate user holdings cache
+        cacheManager.getCache("holdings")
+                   .evict(event.getClientId());
+        
+        // Invalidate orderbook cache  
+        cacheManager.getCache("orderbook")
+                   .evict(event.getSymbol());
+    }
+    
+    @EventListener  
+    public void onMarketDataUpdate(MarketDataEvent event) {
+        // Selective invalidation by symbol
+        cacheManager.getCache("quotes")
+                   .evict(event.getSymbol());
+    }
+}
+```
+
+### Métriques de Performance Cache
+
+**Avant Cache Implementation**
+| Endpoint | Latence P95 | RPS Max | DB Queries/sec | CPU % |
+|----------|-------------|---------|----------------|-------|
+| `/market/quotes/{id}` | 450ms | 50 | 200 | 75% |
+| `/orderbook/{symbol}` | 380ms | 30 | 150 | 70% |
+| `/reports/portfolio` | 1200ms | 10 | 50 | 60% |
+| `/orders/holdings` | 280ms | 80 | 320 | 65% |
+
+**Après Cache Implementation**  
+| Endpoint | Latence P95 | RPS Max | Cache Hit % | Gain Latence |
+|----------|-------------|---------|-------------|--------------|
+| `/market/quotes/{id}` | 45ms | 400 | 85% | **90% ↓** |
+| `/orderbook/{symbol}` | 38ms | 250 | 70% | **89% ↓** |  
+| `/reports/portfolio` | 120ms | 100 | 92% | **90% ↓** |
+| `/orders/holdings` | 32ms | 600 | 88% | **88% ↓** |
+
+**Dashboards Cache Analytics** :
+- **Hit Rate** par cache et global (target >80%)
+- **Miss Rate** et causes (expiration vs eviction vs cold start)  
+- **Latency Distribution** : cached vs uncached requests
+- **Memory Usage** : cache size, évictions, fragmentation
+- **Invalidation Events** : fréquence et impact performance
+
+### Risques et Mitigations Cache
+| Risque | Impact | Mitigation |
+|--------|---------|------------|  
+| **Stale Data** | Décisions trading sur données obsolètes | TTL courts + invalidation événementielle |
+| **Cache Stampede** | Pic de charge lors d'expiration massive | Jitter dans TTL + cache refresh asynchrone |
+| **Memory Pressure** | OOM si cache oversized | Monitoring + éviction LRU + circuit breaker |
+| **Cache Poisoning** | Données corrompues propagées | Validation input + checksums + cache versioning |
 
 ---
 

@@ -11,6 +11,7 @@ public interface WalletServiceClient {
     // Effectuer une transaction sur le wallet (débit ou crédit)
     @PostMapping("/api/wallet/transaction")
     ResponseEntity<String> walletTransaction(
+        @RequestHeader("X-Authenticated-User") String authenticatedUser,
         @RequestParam("ownerEmail") String ownerEmail,
         @RequestParam("amount") double amount,
         @RequestParam("type") String type
@@ -18,5 +19,8 @@ public interface WalletServiceClient {
     
     // Vérifier le solde du wallet
     @GetMapping("/api/wallet/balance")
-    ResponseEntity<Double> getBalance(@RequestParam("ownerEmail") String ownerEmail);
+    ResponseEntity<Double> getBalance(
+        @RequestHeader("X-Authenticated-User") String authenticatedUser,
+        @RequestParam("ownerEmail") String ownerEmail
+    );
 }

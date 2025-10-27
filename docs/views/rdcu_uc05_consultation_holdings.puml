@@ -1,43 +1,71 @@
 @startuml rdcu_uc05_consultation_holdings
-title UC05b - Consultation des holdings client
+title UC05b - Consultation des holdings client (Architecture Microservices)
 
-participant "OrderController" as Controller
-participant "ClientService" as ClientService
-participant "OrderService" as Service
+participant "Client" as Client
+participant "Gateway" as Gateway
+participant "AuthService" as Auth
+participant "OrderController" as OrderController
+participant "OrderService" as OrderService
+participant "ClientServiceClient" as ClientClient
 participant "OrderRepository" as OrderRepo
 
--> Controller : holdings()
-activate Controller
+Client -> Gateway : GET /api/orders/holdings\nBearer JWT Token
+activate Gateway
 
--> Controller : findByEmail(principal.getName())
-Controller -> ClientService : findByEmail()
-ClientService --> Controller : client
+Gateway -> Gateway : JwtAuthFilter.validateToken()
+Gateway -> Gateway : Extract clientEmail from JWT
+Gateway -> OrderController : getHoldings(clientEmail)\nX-Authenticated-User: clientEmail
+activate OrderController
 
-alt Client non trouvé
-    <-- Controller : {}
-    deactivate Controller
-else Client trouvé
-    Controller -> Service : getClientHoldings(clientId)
-    activate Service
+alt Missing authentication header
+    OrderController --> Gateway : 400 "Request must go through Gateway"
+    Gateway --> Client : 400 Bad Request
+else Valid authentication
+    OrderController -> OrderService : getHoldings(clientEmail)
+    activate OrderService
     
-    Service -> OrderRepo : findAll()
-    OrderRepo --> Service : listeOrdres
+    OrderService -> ClientClient : GET /api/clients/getByEmail\nX-Service-Call: order-service\nemail=clientEmail
+    activate ClientClient
+    ClientClient -> Gateway : GET /api/clients/getByEmail\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
+    activate Gateway
+    Gateway -> Gateway : Route to client-service:8082
+    Gateway -> ClientService : getByEmail(clientEmail)
+    activate ClientService
+    ClientService --> Gateway : clientId
+    deactivate ClientService
+    Gateway --> ClientClient : clientId
+    deactivate Gateway
+    ClientClient --> OrderService : ResponseEntity<Integer>
+    deactivate ClientClient
     
-    Service -> Service : filtrer par clientId et status=1
-    loop Pour chaque ordre exécuté du client
-        alt orderType = "BUY"
-            Service -> Service : ajouterAuHolding(symbol, +quantity)
-        else orderType = "SELL"
-            Service -> Service : ajouterAuHolding(symbol, -quantity)
+    alt Client not found
+        OrderService --> OrderController : Map{"error": "Client not found"}
+        OrderController --> Gateway : 400 Bad Request
+        Gateway --> Client : 400 Bad Request
+    else Client found
+        OrderService -> OrderRepo : findByClientId(clientId)
+        OrderRepo --> OrderService : List<Order>
+        
+        OrderService -> OrderService : Map<String, Integer> holdings = new HashMap()
+        loop Pour chaque ordre du client
+            alt orderType = "BUY" && status = FILLED
+                OrderService -> OrderService : holdings.put(symbol, holdings.get(symbol) + quantity)
+            else orderType = "SELL" && status = FILLED  
+                OrderService -> OrderService : holdings.put(symbol, holdings.get(symbol) - quantity)
+            end
         end
+        
+        OrderService -> OrderService : Remove holdings with quantity <= 0
+        OrderService -> OrderService : Add current ETF prices to response
+        
+        OrderService --> OrderController : Map<String, Object>{holdings, prices, totalValue}
+        deactivate OrderService
+        
+        OrderController --> Gateway : 200 OK + holdings data
+        Gateway --> Client : 200 OK + JSON response
+        deactivate OrderController
     end
-    
-    Service -> Service : holdings.entrySet().removeIf(entry -> entry.getValue() <= 0)
-    
-    Service --> Controller : mapHoldings<Symbol, Quantity>
-    deactivate Service
-    
-    <-- Controller : 200 OK + holdings : Map<String, Integer>
-    deactivate Controller
 end
+
+deactivate Gateway
 @enduml

@@ -1,68 +1,102 @@
 @startuml rdcu_uc05_achat_action
-title UC05 - Placement ordre d'achat avec audit trail
+title UC05 - Placement ordre d'achat (Architecture Microservices)
 
-participant "OrderController" as Controller
-participant "ClientService" as ClientService
-participant "OrderService" as Service
-participant "PortefeuilleRepository" as PortefeuilleRepo
-participant "Portefeuille" as PortefeuilleEntity
+participant "Client" as Client
+participant "Gateway" as Gateway
+participant "AuthService" as Auth
+participant "OrderController" as OrderController
+participant "OrderService" as OrderService
+participant "ClientServiceClient" as ClientClient
+participant "WalletServiceClient" as WalletClient
 participant "OrderRepository" as OrderRepo
 participant "TransactionRepository" as TransactionRepo
-participant "Map<String, Double> ETF_PRICES" as Map
--> Controller : placeOrder(symbol : String, qty : int, orderType : String= "BUY")
-activate Controller
+participant "OrderMessageProducer" as RabbitMQ
+participant "MatchingService" as MatchingService
 
-Controller -> Controller : findByEmail(principal.getName())
-Controller -> ClientService : findByEmail()
+Client -> Gateway : POST /api/orders/placeOrder\n{symbol, quantity, orderType}\nBearer JWT Token
+activate Gateway
 
+Gateway -> Gateway : JwtAuthFilter.validateToken()
+Gateway -> Gateway : Extract clientEmail from JWT
+Gateway -> OrderController : placeOrder(clientEmail, symbol, quantity, orderType)\nX-Authenticated-User: clientEmail
+activate OrderController
 
-alt Client non trouvé
-    <-- Controller : "ERROR: Client non trouvé"
-    deactivate Controller
-
-alt quantité <= 0 ou symbole invalide
-    <-- Controller : "ERROR: Paramètres invalides"
-    deactivate Controller
-else Client trouvé
-    ClientService --> Controller : client : Client
-    Controller-> Map : get(symbol)
-
-    alt prix null
-        Map --> Controller : "Symbole non supporté" : Error
-    else prix valide
-        Map --> Controller : prix : Double
-    end
+OrderController -> OrderController : validate ETF_PRICES.contains(symbol)
+alt Symbol not found
+    OrderController --> Gateway : 400 "Symbol not found"
+    Gateway --> Client : 400 Bad Request
+else Symbol valid
+    OrderController -> OrderController : calculate total = price * quantity
+    OrderController -> OrderService : acheterAction(clientEmail, symbol, price, quantity)
+    activate OrderService
     
-    alt orderType = "BUY" 
-        Controller -> Service : acheterAction(clientId, symbol, prix, qty)
-        activate Service
-    alt orderType = "SELL"
-        Controller -> Service : vendreAction(clientId, symbol, prix, qty)
-        activate Service
+    OrderService -> WalletClient : GET /api/wallet/balance\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
+    activate WalletClient
+    WalletClient -> Gateway : GET /api/wallet/balance\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
+    activate Gateway
+    Gateway -> Gateway : Route to wallet-service:8083
+    Gateway -> WalletService : getBalance(clientEmail)
+    activate WalletService
+    WalletService --> Gateway : balance
+    deactivate WalletService
+    Gateway --> WalletClient : balance
+    deactivate Gateway
+    WalletClient --> OrderService : ResponseEntity<Double>
+    deactivate WalletClient
+    
+    alt Insufficient balance
+        OrderService --> OrderController : false
+        OrderController --> Gateway : 400 "Order failed. Check your wallet balance"
+        Gateway --> Client : 400 Bad Request
+    else Sufficient balance
+        OrderService -> WalletClient : POST /api/wallet/transaction\nownerEmail=clientEmail&amount=total&type=DEBIT
+        activate WalletClient
+        WalletClient -> Gateway : POST /api/wallet/transaction\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
+        activate Gateway
+        Gateway -> Gateway : Route to wallet-service:8083
+        Gateway -> WalletService : walletTransaction(clientEmail, total, "DEBIT")
+        activate WalletService
+        WalletService --> Gateway : "Debit successful"
+        deactivate WalletService
+        Gateway --> WalletClient : "Debit successful"
+        deactivate Gateway
+        WalletClient --> OrderService : ResponseEntity<String>
+        deactivate WalletClient
         
-        Service -> PortefeuilleRepo : findByClient_ClientId(clientId)
-        PortefeuilleRepo --> Service : portefeuille
+        OrderService -> ClientClient : GET /api/clients/getByEmail\nX-Service-Call: order-service\nemail=clientEmail
+        activate ClientClient
+        ClientClient -> Gateway : GET /api/clients/getByEmail\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
+        activate Gateway
+        Gateway -> Gateway : Route to client-service:8082
+        Gateway -> ClientService : getByEmail(clientEmail)
+        activate ClientService
+        ClientService --> Gateway : clientId
+        deactivate ClientService
+        Gateway --> ClientClient : clientId
+        deactivate Gateway
+        ClientClient --> OrderService : ResponseEntity<Integer>
+        deactivate ClientClient
         
-        alt portefeuille trouvé et solde suffisant
-            Service -> PortefeuilleEntity : setSolde(solde - total)
-            Service -> PortefeuilleRepo : saveAndFlush(portefeuille)
-            
-            Service -> OrderRepo : save(new Order(clientId, symbol, prix, qty, "BUY", status=1))
-            OrderRepo --> Service : orderSauvegarde
-            
-            Service -> TransactionRepo : save(new Transaction(orderId, ORDER, total, portefeuilleId, description))
-            TransactionRepo --> Service : transactionSauvegardee
-            
-            Service --> Controller : true : boolean 
-            deactivate Service
-            <-- Controller : "SUCCESS: Achat de qty symbol à prix €. Total: total€"
-        else solde insuffisant ou portefeuille null
-            Service --> Controller : false : boolean
-            deactivate Service
-            <-- Controller : "ERROR: Fonds insuffisants ou portefeuille inexistant"
-        end
+        OrderService -> OrderService : create Order(clientId, symbol, price, quantity, "BUY", FILLED)
+        OrderService -> OrderRepo : save(order)
+        OrderRepo --> OrderService : savedOrder
+        
+        OrderService -> OrderService : create Transaction(orderId, ORDER, total, description)
+        OrderService -> TransactionRepo : save(transaction)
+        TransactionRepo --> OrderService : savedTransaction
+        
+        OrderService -> RabbitMQ : sendNewOrderToMatchingService(orderDto)
+        activate RabbitMQ
+        RabbitMQ -> MatchingService : process order via RabbitMQ
+        deactivate RabbitMQ
+        
+        OrderService --> OrderController : true
+        deactivate OrderService
+        OrderController --> Gateway : 200 "Order processed by OrderController"
+        Gateway --> Client : 200 OK
+        deactivate OrderController
     end
 end
 
-deactivate Controller
+deactivate Gateway
 @enduml

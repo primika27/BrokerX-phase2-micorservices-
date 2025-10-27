@@ -1,0 +1,75 @@
+@startuml activity_order_placement
+title Stock Order Placement - BrokerX Microservices
+
+start
+:User submits order request\n(symbol, quantity, orderType);
+
+:Gateway receives request;
+
+:Gateway validates JWT token;
+
+if (Valid token?) then (no)
+  :Return 401 Unauthorized;
+  stop
+else (yes)
+  :Extract user email from JWT;
+  :Route to Order Service;
+endif
+
+:Order Service validates ETF symbol;
+
+if (Valid symbol?) then (no)
+  :Return "Symbol not found";
+  stop
+else (yes)
+  :Calculate order total cost;
+endif
+
+:Order Service calls Wallet Service\nvia Gateway (check balance);
+
+:Wallet Service returns current balance;
+
+if (Sufficient balance?) then (no)
+  :Return "Insufficient funds";
+  stop
+else (yes)
+  :Order Service calls Wallet Service\nvia Gateway (debit amount);
+endif
+
+:Wallet Service debits amount;
+:Create wallet transaction record;
+
+:Order Service calls Client Service\nvia Gateway (get client ID);
+
+:Client Service returns client ID;
+
+:Order Service creates order record;
+:Save order to database;
+
+:Create transaction audit record;
+
+:Send order to RabbitMQ queue;
+
+:Matching Service processes order;
+
+:Return success response to user;
+
+stop
+
+note right
+  **Microservices:**
+  - Gateway (Authentication & Routing)
+  - Order Service (Order Management)
+  - Wallet Service (Balance Management)
+  - Client Service (User Data)
+  - Matching Service (Order Processing)
+  
+  **Key Features:**
+  - JWT Authentication
+  - Service-to-Service Communication
+  - Transaction Management
+  - Error Handling
+  - Async Processing
+end note
+
+@enduml

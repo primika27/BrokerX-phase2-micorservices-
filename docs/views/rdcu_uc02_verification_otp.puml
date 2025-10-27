@@ -1,46 +1,42 @@
-@startuml uc02_verification_otp
-title UC02b - Vérification OTP
+@startuml uc02_verification_otp_jwt
+title UC02b - Vérification OTP avec JWT (Microservices)
 
+actor User
+participant "Gateway Service" as Gateway
+participant "Auth Controller (AuthService)" as Controller
+participant "Auth Service" as Service
+database "Auth DB" as AuthDB
+collections "OTP Store (Map)" as OtpStore
+participant "JWT Service" as JwtService
 
-participant "AuthentificationController" as Controller
-participant "AuthentificationService" as Service
-participant "otpStore Map<String, String>" as OtpStore
-participant "Spring Security" as Security
-participant "HttpSession" as Session
-participant ":ClientRepository" as Repository
+User -> Gateway : POST /auth/verify-otp
+Gateway -> Controller : verifyOtp(email, otp)
+Controller -> Service : validateOtp(email, otp)
+Service -> AuthDB : findByEmail(email)
+AuthDB --> Service : UserCredential
 
--> Controller : verify-otp(email : String, otp : String)
-activate Controller
+alt Utilisateur trouvé
+    Service -> OtpStore : get(user.id)
+    OtpStore --> Service : OTP
 
-Controller -> Service : validateOtp(email : String, otp : String)
-activate Service
-Service -> Repository : findByEmail(email : String)
+    alt OTP valide
+        Service -> JwtService : generateToken({role:CLIENT}, email)
+        JwtService --> Service : JWT token
+        Service -> OtpStore : remove(user.id)
+        Service --> Controller : JWT token
+        Controller --> Gateway : 200 OK + JWT token
+        Gateway --> User : Login success + token
 
-alt Client trouvé et actif
-Repository --> Service : client : ClientEntity
+    else OTP invalide
+        Service --> Controller : null
+        Controller --> Gateway : 400 Bad Request
+        Gateway --> User : OTP invalide
+    end
 
-else Problème (email introuvable, statut inactif)
-Service --> Controller : "OTP_VALIDATION_FAILED" : false boolean
-
+else Utilisateur introuvable
+    Service --> Controller : null
+    Controller --> Gateway : 404 Not Found
+    Gateway --> User : Utilisateur introuvable
 end
 
-Service -> OtpStore : get(client.getClientId())
-OtpStore --> Service : otp : String
-
-alt OTP correct
-    Service --> Controller : true
-    deactivate Service
-
-    Controller -> Security : setAuthentication(email)
-    Controller -> Session : createSession(email)
-    Session --> Controller : session actif  
-
-    <-- Controller : "LOGIN_SUCCESS"
-else OTP incorrect
-    Service --> Controller : false
-    deactivate Service
-    <--Controller : "OTP invalide. Veuillez réessayer."
-end
-
-deactivate Controller
 @enduml

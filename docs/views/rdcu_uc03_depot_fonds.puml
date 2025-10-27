@@ -1,62 +1,34 @@
-@startuml rdcu_uc03_depot_fonds
-title UC03 - Dépôt de fonds avec audit trail
+@startuml uc03_depot_fonds_gateway_jwt
+title UC03 - Dépôt de fonds via Gateway (JWT & Microservices)
 
-participant "PortefeuilleController" as Controller
-participant "PortefeuilleService" as Service
-participant "PortefeuilleRepository" as PortefeuilleRepo
-participant "Portefeuille" as PortefeuilleEntity
-participant "TransactionRepository" as TransactionRepo
-participant "Transaction" as TransactionEntity
-participant "ClientService" as ClientService
+actor Client
+participant "Gateway" as Gateway
+participant "AuthService" as AuthService
+participant "WalletService" as WalletService
+database "WalletDB"
 
--> Controller : deposit(amount : double)
-activate Controller
+Client -> Gateway : POST /api/wallet/deposit (Authorization: Bearer JWT)
+Gateway -> AuthService : Decode JWT → extract email
+AuthService --> Gateway : userEmail
 
-alt Vérification anti-fraude échoue
-    -> Controller : validerMontant(amount : double)
-    alt amount <= 0
-        <-- Controller : "ERROR: Le montant doit être positif"
-        -> Controller : "ERROR: Dépôt refusé - montant invalide"
+Gateway -> WalletService : POST /deposit (X-Authenticated-User: userEmail, amount)
+
+alt amount <= 0
+    WalletService --> Gateway : 400 Bad Request
+    Gateway --> Client :Deposit amount must be positive
+else amount > 0
+    WalletService -> WalletDB : findByOwnerEmail(userEmail)
+    alt Wallet exists
+        WalletDB --> WalletService : Wallet
+    else Wallet doesn't exist
+        WalletService -> WalletDB : create new Wallet(userEmail)
+        WalletDB --> WalletService : New wallet
     end
+
+    WalletService -> WalletDB : update balance += amount
+    WalletDB --> WalletService : Updated wallet
+
+    WalletService --> Gateway : 200 OK
+    Gateway --> Client : Deposit of {amount}$ successful
 end
-
--> Controller : findByEmail(principal.getName())
-Controller -> ClientService : findByEmail()
-ClientService --> Controller : client
-
-alt Client non trouvé
-    <-- Controller : "ERROR: Client non trouvé"
-    -> Controller : "ERROR: Dépôt refusé - client non trouvé"
-    deactivate Service
-    deactivate Controller
-else
-    ' client trouvé
-end
-
-Controller -> Service : getPortefeuilleByClientId(client.getClientId())
-Service -> PortefeuilleRepo : findByClient_ClientId(clientId)
-PortefeuilleRepo --> Service : portefeuille : PortefeuilleEntity
-Service --> Controller : portefeuille : PortefeuilleEntity
-
-alt Portefeuille trouvé
-    -> Controller : deposer(clientId : String, amount : double)
-    Controller -> Service : deposerFonds(portefeuilleId : String, amount : double)
-    Service -> PortefeuilleRepo : findById(portefeuilleId)
-    PortefeuilleRepo --> Service : portefeuille
-    Service -> PortefeuilleEntity : setSolde(solde + amount)
-    Service -> PortefeuilleRepo : save(portefeuille)
-    PortefeuilleRepo --> Service : portefeuilleMisAJour
-    Service --> Controller : true (succès) : boolean
-    <-- Controller : "SUCCESS: Dépôt de {amount}€ effectué avec succès"
-
-    -> Controller : createTransaction(DEPOSIT, amount, portefeuilleId, description)
-    Controller -> TransactionRepo : save(transaction)
-    TransactionRepo --> Controller : transactionSauvegardee
-else Portefeuille non trouvé
-    Service --> Controller : false (échec) : boolean
-    <-- Controller : "ERROR: Portefeuille non trouvé"
-end
-
-deactivate Service
-deactivate Controller
 @enduml

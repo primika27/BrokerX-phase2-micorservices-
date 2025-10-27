@@ -2,36 +2,49 @@
 title User Registration
 
 actor User
-participant Frontend
 participant Gateway
 participant ClientService
-participant AuthService  
+participant AuthService 
+participant UserCredentials 
 participant EmailService
+participant client
 database ClientDB
 database AuthDB
 
-User -> Frontend: Fill registration form
-Frontend -> Gateway: POST /clients/register
-Gateway -> ClientService: register(name, email, password)
+User -> Gateway: Post /clients/register
+Gateway -> ClientService: register(name :String, email :String, password :String)
+ClientService -> ClientDB: findByEmail(email: String)
 
 alt Email available
-    ClientService -> ClientDB: save new client
-    ClientDB --> ClientService: client saved
-    ClientService -> AuthService: create credentials  
-    AuthService -> AuthDB: save user credentials
-    AuthDB --> AuthService: credentials saved
-    AuthService -> EmailService: send verification email
+    ClientService ->    AuthService: create credentials  
+    AuthService -> AuthDB: save user credentials 
+    ClientService --> Client: new Client()
+    Client-->ClientService: new client object
+    ClientService--> ClientDB: save(client:Client)
+    AuthService -> EmailService: sendVerificationEmail(email)
     EmailService --> AuthService: email sent
     AuthService --> ClientService: success
     ClientService --> Gateway: registration success
-    Gateway --> Frontend: success response
-    Frontend --> User: Registration successful
+    Gateway --> User: success response : Check your email for verification
 else Email exists
-    ClientService -> ClientDB: check email
     ClientDB --> ClientService: email exists
     ClientService --> Gateway: error response
-    Gateway --> Frontend: email already used
-    Frontend --> User: Email already used
+    Gateway --> User: email already used
 end
 
 @enduml
+public Client register(String name, String email, String motDePasse) {
+    if (clientRepository.findByEmail(email) != null) {
+        throw new IllegalArgumentException("Email already used");
+    }
+
+    // 1. Tell Auth Service to register credentials
+    authClient.createUserCredential(new UserCredentialRequest(email, motDePasse));
+
+    // 2. Create the client profile
+    int verificationToken = UUID.randomUUID().hashCode();
+    Client client = new Client(0, name, email, verificationToken, "PENDING");
+    client = clientRepository.save(client);
+    sendVerificationEmail(client);
+    return client;
+    }
