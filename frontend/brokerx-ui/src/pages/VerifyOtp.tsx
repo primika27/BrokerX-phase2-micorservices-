@@ -13,9 +13,9 @@ export default function VerifyOtp() {
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    type OtpResp = { status: "OK" | "INVALID_OTP" | "ERROR"; token?: string; message?: string };
+    type OtpResp = { status: "LOGIN_SUCCESS" | "OK" | "INVALID_OTP" | "ERROR"; token?: string; message?: string };
     const r = await apiPost<OtpResp, { email: string; otp: string }>("/api/auth/verify-otp", { email, otp });
-    if (r.status === "OK" && r.token) { setJwt(r.token); nav("/dashboard"); }
+    if ((r.status === "LOGIN_SUCCESS" || r.status === "OK") && r.token) { setJwt(r.token); nav("/dashboard"); }
     else { alert(r.message ?? r.status); }
 
   }

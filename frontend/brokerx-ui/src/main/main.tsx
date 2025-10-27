@@ -5,6 +5,7 @@ import { AuthProvider, Protected } from "../lib/auth";
 import Home from "../pages/Home";
 import VerifySuccess from "../pages/VerifySuccess";
 import VerifyFailed from "../pages/VerifyFailed";
+import VerifyOtp from "../pages/VerifyOtp";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "login", element: <Login /> },
       { path: "register", element: <Register /> },
+      { path: "auth/verify-otp", element: <VerifyOtp /> },
       { path: "verify/success", element: <VerifySuccess /> },
       { path: "verify/failed", element: <VerifyFailed /> },
 

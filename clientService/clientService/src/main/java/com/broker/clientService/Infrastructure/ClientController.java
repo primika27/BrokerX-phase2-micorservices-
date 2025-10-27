@@ -41,9 +41,9 @@ public class ClientController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
         try {
-            authClient.createUserCredential(new UserCredentialRequest(request.getEmail(), request.getPassword()));
+            // Use the original register method which handles both auth and client registration
             clientService.register(request.getName(), request.getEmail(), request.getPassword());
-            return ResponseEntity.ok("Client registered successfully!");
+            return ResponseEntity.ok("Client registered successfully! Check your email to verify your account.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
         }
