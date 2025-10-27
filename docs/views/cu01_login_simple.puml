@@ -1,0 +1,31 @@
+@startuml cu01_login
+title User Login with OTP
+
+actor User
+participant Frontend
+participant Gateway  
+participant AuthService
+participant EmailService
+database AuthDB
+
+User -> Frontend: Enter credentials
+Frontend -> Gateway: POST /auth/login
+Gateway -> AuthService: login(email, password)
+AuthService -> AuthDB: validate user
+AuthDB --> AuthService: user found
+AuthService -> EmailService: send OTP
+EmailService --> AuthService: OTP sent
+AuthService --> Gateway: MFA_REQUIRED
+Gateway --> Frontend: MFA required
+Frontend --> User: Enter OTP code
+
+User -> Frontend: Enter OTP
+Frontend -> Gateway: POST /auth/verify-otp  
+Gateway -> AuthService: verifyOTP(email, code)
+AuthService -> AuthDB: check OTP
+AuthDB --> AuthService: valid
+AuthService --> Gateway: JWT token
+Gateway --> Frontend: login success
+Frontend --> User: Logged in
+
+@enduml

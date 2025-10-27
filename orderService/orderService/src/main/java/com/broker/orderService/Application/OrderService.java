@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.broker.orderService.domain.Order;
-import java.util.Optional;
 import java.util.List;
 import java.util.Map;
 import com.broker.orderService.domain.OrderStatus;
@@ -110,6 +109,43 @@ public class OrderService {
             System.err.println("Erreur acheterAction: " + e.getMessage());
             e.printStackTrace();
             return false;
+        }
+    }
+
+    // Get holdings for a client
+    public Map<String, Object> getHoldings(String clientEmail) {
+        try {
+            // Get client ID from client service
+            ResponseEntity<Integer> clientIdResponse = clientServiceClient.getByEmail(clientEmail);
+            
+            if (clientIdResponse.getStatusCode().is2xxSuccessful() && clientIdResponse.getBody() != null) {
+                int clientId = clientIdResponse.getBody().intValue();
+                
+                // Get filled orders for this client
+                List<Order> filledOrders = orderRepository.findFilledOrdersByClientId(clientId);
+                
+                // Group by symbol and calculate total holdings
+                Map<String, Integer> holdings = new HashMap<>();
+                for (Order order : filledOrders) {
+                    holdings.merge(order.getSymbol(), order.getQuantity(), Integer::sum);
+                }
+                
+                Map<String, Object> result = new HashMap<>();
+                result.put("clientEmail", clientEmail);
+                result.put("holdings", holdings);
+                result.put("totalPositions", holdings.size());
+                
+                return result;
+            } else {
+                Map<String, Object> errorResult = new HashMap<>();
+                errorResult.put("error", "Client not found");
+                return errorResult;
+            }
+        } catch (Exception e) {
+            System.out.println("Error getting holdings for " + clientEmail + ": " + e.getMessage());
+            Map<String, Object> errorResult = new HashMap<>();
+            errorResult.put("error", "Unable to retrieve holdings: " + e.getMessage());
+            return errorResult;
         }
     }
 }

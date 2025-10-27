@@ -1,34 +1,85 @@
-@startuml
-
-title Inscription d'un nouvel utilisateur (avec vérification)
-
+@startuml cu01_seq2
 actor User
+participant Frontend  
+participant Gateway
+participant ClientService
 
-User -> PageController : register(form data) : View
-PageController -> ClientService : register(name, email, motDePasse) : Client
-ClientService -> ClientRepository : save(Client) : Client
-ClientRepository --> ClientService : Client
-ClientService -> JavaMailSender : sendVerificationEmail(Client) : void
-JavaMailSender --> ClientService : void
-ClientService --> PageController : Client
-PageController --> User : View (inscription en attente vérification)
+User -> Frontend: register
+Frontend -> Gateway: request
+Gateway -> ClientService: create
+ClientService --> Gateway: created
+Gateway --> Frontend: success
+Frontend --> User: done
+@enduml
 
+alt Email déjà existant
+    ClientService -> ClientRepo : findByEmail(email)
+    ClientRepo --> ClientService : Client existant
+    ClientService --> ClientController : IllegalArgumentException("Email déjà utilisé")
+    ClientController --> Gateway : 400 Bad Request
+    Gateway --> Frontend : Error Response
+    Frontend --> User : "Email déjà utilisé"
 
+else Email disponible
+    ClientService -> ClientRepo : save(nouveau Client)
+    ClientRepo -> ClientDB : persist
+    ClientDB --> ClientRepo : Client sauvegardé
+    ClientRepo --> ClientService : Client
 
-alt Lien de vérification cliqué
-    User -> PageController : GET /api/clients/verify?token
-    PageController -> ClientService : verifyByToken(token) : boolean
-    ClientService -> ClientRepository : findByVerificationToken(token) : Client
-    ClientRepository --> ClientService : Client
-    ClientService -> ClientRepository : save(Client (status=ACTIVE)) : Client
-    ClientRepository --> ClientService : Client
-    ClientService --> PageController : true
-    PageController --> User : RedirectView (success page)
-else Lien non cliqué ou token invalide
-    User --> PageController : (aucune action ou mauvais lien)
-    PageController -> ClientService : verifyByToken(token) : false
-    ClientService --> PageController : false
-    PageController --> User : RedirectView (failure page)
+    ClientService -> AuthClient : POST /api/auth/register
+    AuthClient -> Gateway : via Feign
+    Gateway -> AuthController : register(AuthRequest)
+    
+    AuthController -> AuthService : register(email, password)
+    AuthService -> UserRepo : save(UserCredential)
+    UserRepo -> AuthDB : persist
+    AuthDB --> UserRepo : UserCredential sauvegardé
+    UserRepo --> AuthService : UserCredential
+    
+    AuthService -> EmailService : sendVerificationEmail(email, token)
+    EmailService -> SMTP : send verification email
+    SMTP --> EmailService : email sent
+    EmailService --> AuthService : void
+    
+    AuthService --> AuthController : success
+    AuthController --> Gateway : 201 Created
+    Gateway --> AuthClient : success
+    AuthClient --> ClientService : success
+    
+    ClientService --> ClientController : Client
+    ClientController --> Gateway : 201 Created
+    Gateway --> Frontend : Success Response
+    Frontend --> User : "Inscription réussie! Vérifiez votre email"
+end
+
+== Vérification Email ==
+User -> User : clique lien dans email
+User -> Frontend : GET /verify?token=xxx
+Frontend -> Gateway : GET /api/auth/verify?token=xxx
+Gateway -> AuthController : verify(token)
+
+AuthController -> AuthService : verifyEmail(token)
+AuthService -> UserRepo : findByVerificationToken(token)
+UserRepo -> AuthDB : query
+AuthDB --> UserRepo : UserCredential
+UserRepo --> AuthService : UserCredential
+
+alt Token valide
+    AuthService -> UserRepo : updateStatus(ACTIVE)
+    UserRepo -> AuthDB : update
+    AuthDB --> UserRepo : updated
+    UserRepo --> AuthService : success
+    
+    AuthService --> AuthController : true
+    AuthController --> Gateway : 200 OK
+    Gateway --> Frontend : Success
+    Frontend --> User : "Email vérifié avec succès!"
+
+else Token invalide/expiré
+    AuthService --> AuthController : false
+    AuthController --> Gateway : 400 Bad Request
+    Gateway --> Frontend : Error
+    Frontend --> User : "Lien de vérification invalide"
 end
 
 @enduml

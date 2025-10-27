@@ -64,8 +64,20 @@ public class OrderController {
     }
 
     @GetMapping("/holdings")
-    public ResponseEntity<String> getHoldings(@RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail) {
-        return ResponseEntity.ok("Holdings retrieval not implemented yet for " + clientEmail);
+    public ResponseEntity<Map<String, Object>> getHoldings(@RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail) {
+        if (clientEmail == null || clientEmail.isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Request must go through Gateway - Missing authentication header");
+            return ResponseEntity.badRequest().body(error);
+        }
+        
+        Map<String, Object> holdings = orderService.getHoldings(clientEmail);
+        
+        if (holdings.containsKey("error")) {
+            return ResponseEntity.badRequest().body(holdings);
+        } else {
+            return ResponseEntity.ok(holdings);
+        }
     }
 
 }

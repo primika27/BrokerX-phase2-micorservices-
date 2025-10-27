@@ -1,6 +1,6 @@
 # BrokerX Microservices - Runbook Essentiel
 
-## 📋 Vue d'ensemble
+## Vue d'ensemble
 
 Procédures essentielles pour démarrer, surveiller et dépanner les microservices BrokerX.
 
@@ -39,7 +39,7 @@ cd orderService/orderService && mvnw spring-boot:run
 docker-compose up -d
 ```
 
-## 🏥 Vérification de la Santé
+## Vérification de la Santé
 
 ### URLs Essentielles
 - **Gateway**: http://localhost:8080/actuator/health
@@ -60,7 +60,7 @@ curl http://localhost:8084/actuator/health
 
 **Réponse attendue :** `{"status":"UP"}`
 
-## 🔧 Dépannage Rapide
+## Dépannage Rapide
 
 ### Problème 1: Service ne Démarre Pas
 
@@ -115,7 +115,7 @@ curl http://localhost:8080/api/auth/actuator/health
 
 **Solution :** Vérifier que tous les services sont UP avant le Gateway.
 
-## 💾 Sauvegarde Simple
+## Sauvegarde Simple
 
 ### Sauvegarder les Données
 ```bash
@@ -164,7 +164,7 @@ cd [serviceDirectory]
 mvnw spring-boot:run
 ```
 
-## 📊 URLs Utiles
+## URLs Utiles
 
 ### Documentation API (Swagger)
 - **Gateway**: http://localhost:8080/swagger-ui.html
@@ -204,7 +204,7 @@ mvnw spring-boot:run
 - **Équipe DevOps**: devops@brokerx.com
 - **Documentation**: Consulter OBSERVABILITY.md pour plus de détails
 
-## 📚 Commandes Essentielles
+## Commandes Essentielles
 
 ### Démarrage/Arrêt
 ```bash
@@ -232,4 +232,4 @@ netstat -an | findstr :808
 
 ---
 
-**📝 Note :** Gardez ce runbook à portée de main. Pour plus de détails, consultez OBSERVABILITY.md
+**Note :** Gardez ce runbook à portée de main. Pour plus de détails, consultez OBSERVABILITY.md

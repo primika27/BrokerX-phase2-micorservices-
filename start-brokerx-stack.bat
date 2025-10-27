@@ -46,6 +46,7 @@ echo - Auth Service: http://localhost:8081
 echo - Client Service: http://localhost:8082
 echo - Wallet Service: http://localhost:8083
 echo - Order Service: http://localhost:8084
+echo - Matching Service: http://localhost:8085  
 echo.
 
 echo Observability URLs:

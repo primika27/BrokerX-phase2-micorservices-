@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useAuth } from "../lib/useAuth";
-import { apiPost } from "../lib/api";
 
 export default function Deposit() {
   const { jwt } = useAuth();
@@ -8,8 +7,25 @@ export default function Deposit() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    await apiPost("/api/wallet/deposit", { amount }, jwt || undefined);
-    alert("Deposited");
+    try {
+      // Send amount as URL parameter instead of request body
+      const response = await fetch(`/api/wallet/deposit?amount=${amount}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${jwt}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const message = await response.text();
+      if (response.ok) {
+        alert(`Success: ${message}`);
+        setAmount(0); // Reset form
+      } else {
+        alert(`Error: ${message}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error}`);
+    }
   }
 
   return (

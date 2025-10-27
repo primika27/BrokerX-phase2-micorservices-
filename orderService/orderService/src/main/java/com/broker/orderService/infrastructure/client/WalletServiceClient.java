@@ -5,7 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.broker.orderService.infrastructure.config.OrderServiceFeignConfig;
 
-@FeignClient(name = "wallet-service", url = "http://localhost:8080", configuration = OrderServiceFeignConfig.class)
+@FeignClient(name = "wallet-service", url = "http://gateway:8080", configuration = OrderServiceFeignConfig.class)
 public interface WalletServiceClient {
     
     // Effectuer une transaction sur le wallet (débit ou crédit)

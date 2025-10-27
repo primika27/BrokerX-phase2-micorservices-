@@ -12,7 +12,7 @@ export default function App() {
           {jwt && (
             <>
               <Link to="/dashboard">Dashboard</Link>
-              <Link to="/place-order">Place Order</Link>
+              <Link to="/placeOrder">Place Order</Link>
               <Link to="/deposit">Deposit</Link>
             </>
           )}

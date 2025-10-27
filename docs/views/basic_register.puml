@@ -1,0 +1,19 @@
+@startuml basic_register  
+title Registration Flow
+
+User -> Frontend: register
+Frontend -> Gateway: register request
+Gateway -> ClientService: create client
+ClientService -> ClientDB: save
+ClientDB --> ClientService: saved
+ClientService -> AuthService: create auth
+AuthService -> AuthDB: save credentials  
+AuthDB --> AuthService: saved
+AuthService -> EmailService: verification email
+EmailService --> AuthService: sent
+AuthService --> ClientService: success
+ClientService --> Gateway: created
+Gateway --> Frontend: success  
+Frontend --> User: check email
+
+@enduml

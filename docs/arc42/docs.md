@@ -253,7 +253,7 @@ Client 1─* Ordre
 -**Base de données** : H2 et PostgreSQL comme bases de données.
 - **Persistance** : Spring Data JPA (Java Persistence API) pour le mapping objet-relationnel et la gestion des entités, avec H2/Hibernate comme implémentation sous-jacente.
 
-![Component diagram](./ComponentDiagramphase2.png)
+![Component diagram](./component.png)
 
 ![activity diagram](./activity.png)
 
@@ -328,7 +328,7 @@ Du côté CI/CD, le code source est hébergé sur GitHub/GitLab, où un pipeline
 
 La communication externe se fait via le navigateur de l’utilisateur → brokerx-app (UI Thymeleaf et API REST), tandis que la persistance passe par JDBC vers la base de données interne. Les logs sont collectés sur la VM via stdout/stderr.
 
-![Diagramme de déployement](./deployentDiagramphase2.png)
+![Diagramme de déployement](./deployment.png)
 
 ## MUST HAVES: 
 
@@ -363,16 +363,17 @@ CI/CD automatisé : pipeline GitLab qui exécute les tests (JUnit), construit l�
 Conteneurisation : application et base packagées dans des conteneurs Docker, orchestrées avec docker-compose pour reproductibilité rapide (<30 min).
 
 
+
 ---
 
 ## 9. Décisions d’architecture
 *(Lister les ADR – Architectural Decision Records – pour ce projet. Inclure des références aux fichiers ADR si disponibles.)*  
 
-1) ADR01: Adoption de architechture hexagonale pour découpler la logique métier des services et base de données. veuillez consulter `/docs/adr/adr001.md`
+1) ADR01: Adoption de architechture en microservices. `/docs/adr/adr001.md`
 
 2) ADR02: Le système BrokerX utilise Spring Data JPA pour gérer la persistance des données via des entités et des dépôts (JpaRepository).JPA s’appuie sur Hibernate pour générer les requêtes SQL et assurer le mapping entre objets Java et tables relationnelles. veuillez consulter `/docs/adr/adr002.md`
 
-3) ADR03: ..
+3) ADR03: React front-end avec nginx 
 ---
 
 ## 10. Exigences qualité - Architecture Microservices

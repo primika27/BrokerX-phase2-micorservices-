@@ -44,8 +44,16 @@ public class ClientController {
             // Use the original register method which handles both auth and client registration
             clientService.register(request.getName(), request.getEmail(), request.getPassword());
             return ResponseEntity.ok("Client registered successfully! Check your email to verify your account.");
+        } catch (IllegalArgumentException e) {
+            // Handle specific business logic errors (like email already exists)
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Registration failed: " + e.getMessage());
+            // Handle auth service errors or other errors
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && errorMessage.contains("Email already registered")) {
+                return ResponseEntity.badRequest().body("This email address is already registered. Please use a different email or try logging in.");
+            }
+            return ResponseEntity.badRequest().body("Registration failed. Please try again later.");
         }
     }
 

@@ -1,21 +1,17 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
 import { apiGet } from "../lib/api";
-//import { nav } from "framer-motion/m";
 import { useNavigate } from "react-router-dom";
 
-
-type Me = { id: number; name: string; email: string };
-type Balance = { currency: string; available: number; locked: number };
-type Order = { id: string; symbol: string; side: "BUY" | "SELL"; qty: number; price?: number; status: string; createdAt: string };
+type Me = { id: number; name: string; email: string; status?: string };
 type Tx = { id: string; type: "DEPOSIT" | "WITHDRAWAL" | "FILL"; amount: number; createdAt: string };
 
 export default function Dashboard() {
-  const { jwt, setJwt } = useAuth();
+  const { jwt } = useAuth();
   const nav = useNavigate();
   const [me, setMe] = useState<Me | null>(null);
-  const [balances, setBalances] = useState<Balance[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [balance, setBalance] = useState<number>(0);
+  const [orders, setOrders] = useState<string>(""); // Backend returns string message
   const [txs, setTxs] = useState<Tx[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -27,17 +23,16 @@ export default function Dashboard() {
         setLoading(true);
         setErr(null);
         
-        const [meR, balR, ordR, txR] = await Promise.all([
+        const [meR, balR, ordR] = await Promise.all([
           apiGet<Me>("/api/clients/me", jwt || undefined),
-          apiGet<Balance[]>("/api/wallet/balance", jwt || undefined),
-          apiGet<Order[]>("/api/orders/holdings", jwt || undefined),
-          apiGet<Tx[]>("/api/wallet/deposit", jwt || undefined),
+          apiGet<number>("/api/wallet/balance", jwt || undefined),
+          apiGet<string>("/api/orders/holdings", jwt || undefined),
         ]);
         if (cancelled) return;
         setMe(meR);
-        setBalances(balR);
+        setBalance(balR);
         setOrders(ordR);
-        setTxs(txR);
+        setTxs([]); // No transaction history endpoint available yet
       } catch (e: unknown) {
         if (!cancelled) setErr(String((e as Error).message || e));
       } finally {
@@ -52,9 +47,6 @@ export default function Dashboard() {
     <main className="container">
       <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <h1 style={{ margin: 0 }}>Dashboard</h1>
-        <div style={{ marginLeft: "auto" }}>
-          <button onClick={() => setJwt(null)}>Logout</button>
-        </div>
       </header>
 
       {loading && <p>Loading…</p>}
@@ -65,8 +57,8 @@ export default function Dashboard() {
           <h2 style={{ marginBottom: 8 }}>Welcome, {me.name}</h2>
           <p style={{ opacity: 0.8 }}>{me.email}</p>
             <div style={{ marginTop: 12, display: "flex", gap: 12 }}>
-                <button onClick={() => nav("/wallet/deposit")}>Deposit</button>
-                <button onClick={() => nav("/orders/place")}>Place Order</button>
+                <button onClick={() => nav("/deposit")}>Deposit</button>
+                <button onClick={() => nav("/placeOrder")}>Place Order</button>
                 <button onClick={() => nav("/wallet/withdraw")}>Withdraw</button>
                 <button onClick={() => nav("/settings")}>Settings</button>
             </div>
@@ -74,45 +66,26 @@ export default function Dashboard() {
       )}
 
       <section style={{ marginTop: 24 }}>
-        <h3>Balances</h3>
-        <table>
-          <thead>
-            <tr><th>Currency</th><th>Available</th><th>Locked</th></tr>
-          </thead>
-          <tbody>
-            {balances.map(b => (
-              <tr key={b.currency}>
-                <td>{b.currency}</td>
-                <td>{b.available}</td>
-                <td>{b.locked}</td>
-              </tr>
-            ))}
-            {!balances.length && !loading && <tr><td colSpan={3}>No balances</td></tr>}
-          </tbody>
-        </table>
+        <h3>Account Balance</h3>
+        <div style={{ padding: "16px", border: "1px solid #ccc", borderRadius: "8px" }}>
+          <p style={{ fontSize: "24px", margin: 0, fontWeight: "bold" }}>
+            ${balance.toFixed(2)} CAD
+          </p>
+          <p style={{ fontSize: "14px", margin: "4px 0 0 0", opacity: 0.7 }}>
+            Available Balance
+          </p>
+        </div>
       </section>
 
       <section style={{ marginTop: 24 }}>
-        <h3>Open Orders</h3>
-        <table>
-          <thead>
-            <tr><th>ID</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>Created</th></tr>
-          </thead>
-          <tbody>
-            {orders.map(o => (
-              <tr key={o.id}>
-                <td>{o.id}</td>
-                <td>{o.symbol}</td>
-                <td>{o.side}</td>
-                <td>{o.qty}</td>
-                <td>{o.price ?? "-"}</td>
-                <td>{o.status}</td>
-                <td>{new Date(o.createdAt).toLocaleString()}</td>
-              </tr>
-            ))}
-            {!orders.length && !loading && <tr><td colSpan={7}>No open orders</td></tr>}
-          </tbody>
-        </table>
+        <h3>Holdings & Orders</h3>
+        <div style={{ padding: "16px", border: "1px solid #ccc", borderRadius: "8px" }}>
+          {orders ? (
+            <p>{orders}</p>
+          ) : (
+            <p style={{ opacity: 0.7 }}>No holdings or orders available</p>
+          )}
+        </div>
       </section>
 
       <section style={{ marginTop: 24 }}>

@@ -1,0 +1,24 @@
+@startuml basic_login
+title Login Flow
+
+User -> Frontend: login
+Frontend -> Gateway: auth request
+Gateway -> AuthService: validate
+AuthService -> Database: check
+Database --> AuthService: user found
+AuthService -> EmailService: send OTP
+EmailService --> AuthService: sent
+AuthService --> Gateway: OTP required
+Gateway --> Frontend: enter OTP
+Frontend --> User: show OTP form
+
+User -> Frontend: enter OTP  
+Frontend -> Gateway: verify OTP
+Gateway -> AuthService: check OTP
+AuthService -> Database: validate OTP
+Database --> AuthService: valid
+AuthService --> Gateway: login success
+Gateway --> Frontend: token
+Frontend --> User: logged in
+
+@enduml

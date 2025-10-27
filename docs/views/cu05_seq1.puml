@@ -1,30 +1,78 @@
-@startuml
+@startuml cu05_seq1
+title Achat d'actions
+
 actor User
+participant Frontend
+participant Gateway
+participant OrderService
+participant WalletService
+participant MatchingService
+database OrderDB
+queue RabbitMQ
 
-title Achat d'actions par un utilisateur
+User -> Frontend: place order
+Frontend -> Gateway: POST /api/orders/place
+Gateway -> OrderService: placeOrder(request)
 
-User -> OrderController : placerOrder(String symbol, double price, int quantity) : String
-OrderController -> OrderService : acheterAction(int clientId, String symbol, double price, int quantity) : boolean
-
-OrderService -> PortefeuilleRepository : findByClient_ClientId(clientId) : Portefeuille
-PortefeuilleRepository --> OrderService : Portefeuille
+OrderService -> WalletService: checkBalance
+WalletService --> OrderService: balance ok
 
 alt Solde suffisant
-    OrderService -> PortefeuilleRepository : save(Portefeuille (nouveau solde)) : Portefeuille
-    PortefeuilleRepository --> OrderService : Portefeuille
-
-    OrderService -> OrderRepository : save(Order) : Order
-    OrderRepository --> OrderService : Order
-
-    OrderService -> TransactionRepository : save(Transaction(ORDER)) : Transaction
-    TransactionRepository --> OrderService : Transaction
-    note right : Audit trail avec TransactionType.ORDER
-
-    OrderService --> OrderController : true
-    OrderController --> User : "SUCCESS"
+    OrderService -> WalletService: debitFunds
+    WalletService --> OrderService: success
+    OrderService -> OrderDB: save order
+    OrderDB --> OrderService: order saved
+    OrderService -> RabbitMQ: publish order
+    RabbitMQ --> MatchingService: new order
+    OrderService --> Gateway: success
+    Gateway --> Frontend: order placed
+    Frontend --> User: Ordre placé
 else Solde insuffisant
-    OrderService --> OrderController : false
-    OrderController --> User : "ERROR: Solde insuffisant"
+    OrderService --> Gateway: insufficient funds
+    Gateway --> Frontend: error
+    Frontend --> User: Solde insuffisant
+end
+
+OrderService -> ClientClient : getClientById(clientId)
+ClientClient -> Gateway : GET /api/clients/{id}
+Gateway --> ClientClient : Client details
+ClientClient --> OrderService : Client
+
+OrderService -> WalletClient : getWallet(clientEmail)
+WalletClient -> Gateway : GET /api/wallet/{email}
+Gateway --> WalletClient : Wallet details
+WalletClient --> OrderService : Wallet
+
+alt Solde suffisant
+    OrderService -> WalletClient : debitFunds(email, amount)
+    WalletClient -> Gateway : POST /api/wallet/debit
+    Gateway --> WalletClient : Success
+    WalletClient --> OrderService : Success
+    
+    OrderService -> OrderRepo : save(Order)
+    OrderRepo -> OrderDB : persist
+    OrderDB --> OrderRepo : Order saved
+    OrderRepo --> OrderService : Order
+    
+    OrderService -> TransactionRepo : save(Transaction)
+    TransactionRepo -> OrderDB : persist
+    OrderDB --> TransactionRepo : Transaction saved
+    TransactionRepo --> OrderService : Transaction
+    
+    OrderService -> Producer : sendOrderToMatching(Order)
+    Producer -> MQ : publish order
+    MQ --> MatchingService : deliver order for matching
+    
+    OrderService --> OrderController : Order created
+    OrderController --> Gateway : 201 Created
+    Gateway --> Frontend : Success
+    Frontend --> User : "Ordre placé avec succès"
+
+else Solde insuffisant
+    OrderService --> OrderController : InsufficientFundsException
+    OrderController --> Gateway : 400 Bad Request
+    Gateway --> Frontend : Error
+    Frontend --> User : "Solde insuffisant"
 end
 
 @enduml

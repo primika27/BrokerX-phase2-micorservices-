@@ -5,7 +5,7 @@
 
 set -e  # Arrêter le script en cas d'erreur
 
-echo "🚀 Début du déploiement BrokerX Microservices..."
+echo "Début du déploiement BrokerX Microservices..."
 
 # Variables
 DEPLOY_DIR="/home/gha-runner/brokerx-microservices"
@@ -132,31 +132,31 @@ fi
 
 # Afficher un résumé du déploiement
 echo ""
-echo "🎉 Déploiement terminé avec succès!"
+echo "Déploiement terminé avec succès!"
 echo ""
-echo "📊 Services disponibles:"
+echo "Services disponibles:"
 echo "   - Gateway (API): http://localhost:8080"
 echo "   - AuthService: http://localhost:8081"
 echo "   - ClientService: http://localhost:8082"
 echo "   - WalletService: http://localhost:8083"
 echo "   - OrderService: http://localhost:8084"
 echo ""
-echo "📈 Monitoring:"
+echo "Monitoring:"
 echo "   - Prometheus: http://localhost:9090"
 echo "   - Grafana: http://localhost:3000"
 echo ""
-echo "📖 Documentation API:"
+echo "Documentation API:"
 echo "   - Gateway Swagger: http://localhost:8080/swagger-ui.html"
 echo "   - AuthService Swagger: http://localhost:8081/swagger-ui.html"
 echo "   - ClientService Swagger: http://localhost:8082/swagger-ui.html"
 echo "   - WalletService Swagger: http://localhost:8083/swagger-ui.html"
 echo "   - OrderService Swagger: http://localhost:8084/swagger-ui.html"
 echo ""
-echo "💾 Sauvegarde créée dans: $BACKUP_DIR"
+echo "Sauvegarde créée dans: $BACKUP_DIR"
 echo ""
-echo "🔍 Pour voir les logs:"
+echo "Pour voir les logs:"
 echo "   docker compose logs -f [service-name]"
 echo ""
-echo "🛑 Pour arrêter les services:"
+echo "Pour arrêter les services:"
 echo "   docker compose down"
 echo "   docker compose -f docker-compose.monitoring.yml down"

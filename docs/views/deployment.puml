@@ -1,93 +1,120 @@
-@startuml
-title "Déploiement BrokerX - Architecture Microservices (Dev + CI/CD)"
+@startuml deployment
+title "BrokerX - Deployment Architecture"
 
-actor "Utilisateur (Navigateur)" as user
+actor "User Browser" as user
 
-' Zone Dev/CI
-node "Espace Dev/CI" as devci {
-  node "Machine Dev" as dev {
-    artifact "Code source\n(Microservices Spring Boot)" as src
-    artifact "docker-compose.yml\n(.env.dev / .env.prod)" as compose
-    component "Docker Desktop / Compose" as docker
+' Development Environment
+node "Development Environment" as devenv {
+  node "Local Machine" as local {
+    artifact "Source Code\n(Spring Boot Microservices)" as src
+    artifact "docker-compose.yml" as compose
+    component "Docker Desktop" as docker
   }
 
-  node "GitHub" as gh {
-    node "Repository BrokerX" as repo
-    node "GitHub Actions (CI)" as actions {
-      artifact "Build Maven\nTests JUnit" as maven
-      artifact "Image Docker\nbrokerx-* :latest" as image
-      artifact "Test container\n/actuator/health" as healthcheck
-    }
-    node "Registry (optionnel)" as reg {
-      artifact "GHCR / Docker Hub" as registry
+  node "GitHub" as github {
+    node "Repository" as repo
+    node "CI/CD Pipeline" as cicd {
+      artifact "Maven Build" as maven
+      artifact "Docker Images" as images
+      artifact "Health Checks" as health
     }
   }
 }
 
-' === Environnement d'exécution ===
-node "VM Docker Host (Démo / Serveur)" as vm {
-  node "Réseau Docker (bridge)" as net {
+' Runtime Environment
+node "Docker Host Server" as server {
+  node "Docker Network" as network {
+    
+    ' Frontend
+    node "React Frontend" as frontend {
+      component "React App\n(TypeScript)" as reactapp
+      component "Vite Dev Server\n:5173" as vite
+    }
 
     ' Gateway
-    node "Container: gateway-service (8080)" as gateway {
-      component "Spring Cloud Gateway\n+ JWT Filter\n+ Routing" as gw
+    node "Gateway Container :8080" as gateway {
+      component "Spring Cloud Gateway\nJWT Authentication\nRouting" as gw
     }
 
     ' Auth Service
-    node "Container: auth-service (8081)" as auth {
-      component "AuthService\n- JWT & MFA\n- Email OTP" as authapp
+    node "Auth Service Container :8081" as auth {
+      component "Authentication Service\nJWT + OTP\nEmail Service" as authapp
       database "AuthDB (H2)" as authdb
     }
 
     ' Client Service
-    node "Container: client-service (8082)" as client {
-      component "ClientService\n- Inscription\n- Profil client" as clientapp
+    node "Client Service Container :8082" as client {
+      component "Client Management\nRegistration\nProfile" as clientapp
       database "ClientDB (H2)" as clientdb
     }
 
     ' Wallet Service
-    node "Container: wallet-service (8083)" as wallet {
-      component "WalletService\n- Solde\n- Dépôts / Débits" as walletapp
+    node "Wallet Service Container :8083" as wallet {
+      component "Wallet Management\nBalance Operations\nTransactions" as walletapp
       database "WalletDB (H2)" as walletdb
     }
 
     ' Order Service
-    node "Container: order-service (8084)" as order {
-      component "OrderService\n- Ordres BUY/SELL\n- Transactions" as orderapp
+    node "Order Service Container :8084" as order {
+      component "Order Processing\nBuy/Sell Orders\nTransaction History" as orderapp
       database "OrderDB (H2)" as orderdb
+    }
+    
+    ' Matching Service
+    node "Matching Service Container :8085" as matching {
+      component "Order Matching\nMarket Making\nExecution Engine" as matchingapp
+      database "MatchingDB (H2)" as matchingdb
+    }
+    
+    ' Message Queue
+    node "RabbitMQ Container :5672" as rabbitmq {
+      component "Message Broker\norderQueue\nmatchingQueue" as mq
     }
   }
 
-  folder "Volumes persistants" as vol {
-    artifact "./data/authdb.mv.db"
-    artifact "./data/clientdb.mv.db"
-    artifact "./data/walletdb.mv.db"
-    artifact "./data/orderdb.mv.db"
+  folder "Persistent Volumes" as volumes {
+    artifact "./data/auth/" as authvol
+    artifact "./data/client/" as clientvol
+    artifact "./data/wallet/" as walletvol
+    artifact "./data/order/" as ordervol
+    artifact "./data/matching/" as matchingvol
+    artifact "./data/rabbitmq/" as mqvol
   }
-
-  node "Logs (stdout/stderr)" as logs
 }
 
-' === Liaisons Utilisateur / Gateway ===
-user --> gw : HTTP 8080\n(UI / API via React/REST)
+' User Interactions
+user --> reactapp : HTTP Browser
+reactapp --> gw : API Calls :8080
+
+' Gateway Routing
 gw --> authapp : /api/auth/**
 gw --> clientapp : /api/clients/**
 gw --> walletapp : /api/wallet/**
 gw --> orderapp : /api/orders/**
 
-' === Communications internes Feign ===
-clientapp --> authapp : Feign (création credentials)
-orderapp --> walletapp : Feign (transactions financières)
+' Inter-Service Communication (via Gateway)
+clientapp --> gw : Feign Auth Calls
+orderapp --> gw : Feign Wallet Calls
+orderapp --> gw : Feign Client Calls
 
-' === Liens DB & Volumes ===
+' Message Queue Communication
+orderapp --> mq : Publish Orders
+mq --> matchingapp : Consume Orders
+
+' Database Connections
 authapp --> authdb
 clientapp --> clientdb
 walletapp --> walletdb
 orderapp --> orderdb
-authdb --> vol
-clientdb --> vol
-walletdb --> vol
-orderdb --> vol
+matchingapp --> matchingdb
+
+' Volume Mappings
+authdb --> authvol
+clientdb --> clientvol
+walletdb --> walletvol
+orderdb --> ordervol
+matchingdb --> matchingvol
+mq --> mqvol
 
 ' === CI/CD Flow ===
 dev --> repo : git push
@@ -118,6 +145,29 @@ Chaque microservice possède :
 - Sa propre base H2 (Database per Service)  
 - Communication HTTP via le Gateway  
 - Tests santé : `/actuator/health`  
+end note
+
+' Additional Notes
+note bottom of mq
+**RabbitMQ Message Queue**
+- Asynchronous order processing
+- Event-driven architecture
+- Decoupled microservices
+end note
+
+note bottom of matchingapp
+**Matching Service**
+- Order matching engine
+- Market making algorithm
+- Trade execution logic
+end note
+
+note bottom of reactapp
+**React Frontend**
+- TypeScript-based UI
+- JWT authentication
+- Protected routes
+- API service layer
 end note
 
 @enduml

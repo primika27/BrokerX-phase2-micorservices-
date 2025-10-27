@@ -1,0 +1,49 @@
+@startuml cu05_order
+title Place Stock Order
+
+actor User
+participant Frontend
+participant Gateway
+participant OrderService
+participant WalletService
+participant ClientService
+participant MatchingService
+database OrderDB
+database WalletDB
+queue RabbitMQ
+
+User -> Frontend: Place order (symbol, price, quantity)
+Frontend -> Gateway: POST /orders/place
+Gateway -> OrderService: placeOrder(request)
+
+OrderService -> ClientService: getClient(clientId)
+ClientService --> OrderService: client details
+
+OrderService -> WalletService: checkBalance(clientEmail)  
+WalletService -> WalletDB: get wallet
+WalletDB --> WalletService: wallet info
+WalletService --> OrderService: balance info
+
+alt Sufficient balance
+    OrderService -> WalletService: debitFunds(amount)
+    WalletService -> WalletDB: update balance
+    WalletDB --> WalletService: updated
+    WalletService --> OrderService: success
+    
+    OrderService -> OrderDB: save order
+    OrderDB --> OrderService: order saved
+    
+    OrderService -> RabbitMQ: publish order
+    RabbitMQ --> MatchingService: new order
+    
+    OrderService --> Gateway: order placed
+    Gateway --> Frontend: success
+    Frontend --> User: Order placed successfully
+    
+else Insufficient balance
+    OrderService --> Gateway: insufficient funds
+    Gateway --> Frontend: error
+    Frontend --> User: Insufficient balance
+end
+
+@enduml

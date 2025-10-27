@@ -247,10 +247,10 @@ jobs:
       - name: Send deployment notification
         if: success()
         run: |
-          echo "✅ BrokerX Microservices deployed successfully!"
-          echo "🌐 Gateway: http://your-vm-ip:8080"
-          echo "📊 Grafana: http://your-vm-ip:3000"
-          echo "📈 Prometheus: http://your-vm-ip:9090"
+          echo "BrokerX Microservices deployed successfully!"
+          echo "Gateway: http://your-vm-ip:8080"
+          echo "Grafana: http://your-vm-ip:3000"
+          echo "Prometheus: http://your-vm-ip:9090"
 
       - name: Cleanup on failure
         if: failure()
@@ -258,4 +258,4 @@ jobs:
           cd /home/gha-runner/brokerx-microservices
           docker compose down
           docker compose -f docker-compose.monitoring.yml down
-          echo "❌ Deployment failed - services stopped"
+          echo "Deployment failed - services stopped"

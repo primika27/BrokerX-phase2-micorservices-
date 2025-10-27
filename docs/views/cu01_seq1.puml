@@ -1,20 +1,65 @@
-@startuml
-title Connexion d'un utilisateur (avec MFA)
-
+@startuml cu01_seq1
 actor User
+participant Frontend
+participant Gateway
+participant AuthService
 
-User -> AuthentificationController : login(email, password) : String
-AuthentificationController -> AuthentificationService : loginWithMfa(email, password) : String
+User -> Frontend: login
+Frontend -> Gateway: auth
+Gateway -> AuthService: validate
+AuthService --> Gateway: success
+Gateway --> Frontend: token
+Frontend --> User: logged in
+@enduml
+AuthService -> UserRepo : findByEmail(email)
+UserRepo -> AuthDB : query
+AuthDB --> UserRepo : UserCredential
+UserRepo --> AuthService : UserCredential
 
-AuthentificationService -> ClientRepository : findByEmail(email) : Client
-ClientRepository --> AuthentificationService : Client
+alt Credentials valides et compte actif
+    AuthService -> EmailService : sendOtp(email)
+    EmailService -> SMTP : send OTP email
+    SMTP --> EmailService : email sent
+    EmailService --> AuthService : void
+    
+    AuthService --> AuthController : "MFA_REQUIRED"
+    AuthController --> Gateway : 200 OK {status: "MFA_REQUIRED"}
+    Gateway --> Frontend : MFA Required Response
+    Frontend --> User : "Code OTP envoyé par email"
 
-alt Client trouvé et actif
-    AuthentificationService -> JavaMailSender : sendOTP(client)
-    AuthentificationService --> AuthentificationController : "MFA_REQUIRED"
-else Problème (email introuvable, statut inactif, mauvais mot de passe)
-    AuthentificationService --> AuthentificationController : "LOGIN_FAILED"
+else Credentials invalides ou compte inactif
+    AuthService --> AuthController : "LOGIN_FAILED"
+    AuthController --> Gateway : 401 Unauthorized
+    Gateway --> Frontend : Error Response
+    Frontend --> User : "Email ou mot de passe incorrect"
 end
 
-AuthentificationController --> User : "LOGIN_SUCCESS" / "MFA_REQUIRED" / "LOGIN_FAILED"
+== Phase 2: Vérification OTP ==
+User -> Frontend : saisit code OTP
+Frontend -> Gateway : POST /api/auth/verify-otp
+Gateway -> AuthController : verifyOtp(OtpRequest)
+
+AuthController -> AuthService : verifyOtp(email, otpCode)
+AuthService -> UserRepo : findByEmail(email)
+UserRepo -> AuthDB : query
+AuthDB --> UserRepo : UserCredential
+UserRepo --> AuthService : UserCredential
+
+alt Code OTP valide
+    AuthService -> JwtService : generateToken(email)
+    JwtService --> AuthService : JWT Token
+    
+    AuthService --> AuthController : JWT Token
+    AuthController --> Gateway : 200 OK {token: "jwt_token"}
+    Gateway --> Frontend : Success with Token
+    Frontend -> Frontend : store token in context
+    Frontend --> User : "Connexion réussie" + redirect to dashboard
+
+else Code OTP invalide/expiré
+    AuthService --> AuthController : "INVALID_OTP"
+    AuthController --> Gateway : 400 Bad Request
+    Gateway --> Frontend : Error Response
+    Frontend --> User : "Code OTP invalide"
+end
+
 @enduml

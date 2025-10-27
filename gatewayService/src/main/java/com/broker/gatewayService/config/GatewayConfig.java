@@ -31,6 +31,11 @@ public class GatewayConfig {
             .route("client_service_public", r -> r.path("/api/clients/register", "/api/clients/test")
                 .uri("http://client-service:8082"))
                 
+            // Client service routes (service-to-service calls)
+            .route("client_service_internal", r -> r.path("/api/clients/getByEmail")
+                .and().header("X-Service-Call")
+                .uri("http://client-service:8082"))
+                
             // Client service routes (protected)
             .route("client_service_protected", r -> r.path("/api/clients/**")
                 .filters(f -> f.filter(jwtAuthFilter))

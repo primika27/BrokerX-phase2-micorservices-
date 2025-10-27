@@ -1,0 +1,37 @@
+@startuml cu01_register
+title User Registration
+
+actor User
+participant Frontend
+participant Gateway
+participant ClientService
+participant AuthService  
+participant EmailService
+database ClientDB
+database AuthDB
+
+User -> Frontend: Fill registration form
+Frontend -> Gateway: POST /clients/register
+Gateway -> ClientService: register(name, email, password)
+
+alt Email available
+    ClientService -> ClientDB: save new client
+    ClientDB --> ClientService: client saved
+    ClientService -> AuthService: create credentials  
+    AuthService -> AuthDB: save user credentials
+    AuthDB --> AuthService: credentials saved
+    AuthService -> EmailService: send verification email
+    EmailService --> AuthService: email sent
+    AuthService --> ClientService: success
+    ClientService --> Gateway: registration success
+    Gateway --> Frontend: success response
+    Frontend --> User: Registration successful
+else Email exists
+    ClientService -> ClientDB: check email
+    ClientDB --> ClientService: email exists
+    ClientService --> Gateway: error response
+    Gateway --> Frontend: email already used
+    Frontend --> User: Email already used
+end
+
+@enduml

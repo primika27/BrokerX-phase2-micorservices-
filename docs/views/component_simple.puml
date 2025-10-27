@@ -1,0 +1,97 @@
+@startuml component_simple
+title BrokerX Component Diagram
+
+package "Frontend (5173)" {
+  [React UI]
+  [Auth Context]
+  [nginx conf]
+}
+
+package "Gateway (:8080)" {
+  [Spring Gateway]
+  [JWT Filter]
+}
+
+package "Auth Service (:8081)" {
+  [AuthentificationController <<Controller>>]
+  [AuthentificationService <<Service>>]
+  [JwtService <<Service>>]
+  [EmailService <<Service>>]
+  [UserCredentialRepository <<Repository>>]
+  [UserCredential <<Entity>>]
+  [AuthDB (H2) <<Database>>]
+}
+
+package "Client Service (8082)" {
+  [ClientController <<Controller>>]
+  [ClientService <<Service>>]
+  [ClientRepository <<Repository>>]
+  [Client <<Entity>>]
+  [AuthClient (Feign) <<Client>>]
+  [ClientDB (H2) <<Database>>]
+}
+package "Wallet Service (:8083)" {
+  [WalletController <<Controller>>]
+  [WalletService <<Service>>]
+  [WalletRepository <<Repository>>]
+  [Wallet <<Entity>>]
+  [WalletDB (H2) <<Database>>]
+}
+
+package "Order Service (:8084)" {
+  [OrderController <<Controller>>]
+  [OrderService <<Service>>]
+  [OrderRepository <<Repository>>]
+  [TransactionRepository <<Repository>>]
+  [Order <<Entity>>]
+  [Transaction <<Entity>>]
+  [WalletServiceClient (Feign) <<Client>>]
+  [ClientServiceClient (Feign) <<Client>>]
+  [OrderMessageProducer <<Producer>>]
+  [OrderDB (H2) <<Database>>]
+}
+
+package "Matching Service (:8085)" {
+  [MatchingService <<Service>>]
+  [MatchingOrderRepository <<Repository>>]
+  [MatchingOrder <<Entity>>]
+  [OrderMessageListener <<Consumer>>]
+  [MatchingDB (H2) <<Database>>]
+}
+
+database "AuthDB" 
+database "ClientDB"
+database "WalletDB" 
+database "OrderDB"
+database "MatchingDB"
+
+queue "RabbitMQ"
+
+[React UI] --> [Spring Gateway] : HTTP requests
+[Spring Gateway] --> [AuthController] : /auth/**
+[Spring Gateway] --> [ClientController] : /clients/**
+[Spring Gateway] --> [WalletController] : /wallet/**
+[Spring Gateway] --> [OrderController] : /orders/**
+
+[AuthController] --> [AuthService]
+[AuthService] --> [UserRepo]
+[UserRepo] --> [AuthDB]
+
+[ClientController] --> [ClientService]
+[ClientService] --> [ClientRepo]
+[ClientRepo] --> [ClientDB]
+
+[WalletController] --> [WalletService]
+[WalletService] --> [WalletRepo]
+[WalletRepo] --> [WalletDB]
+
+[OrderController] --> [OrderService]
+[OrderService] --> [OrderRepo]
+[OrderRepo] --> [OrderDB]
+[OrderService] --> [RabbitMQ]
+
+[RabbitMQ] --> [MatchingService]
+[MatchingService] --> [MatchingRepo]
+[MatchingRepo] --> [MatchingDB]
+
+@enduml
