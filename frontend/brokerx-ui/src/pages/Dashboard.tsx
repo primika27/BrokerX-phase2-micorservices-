@@ -84,7 +84,6 @@ export default function Dashboard() {
                 <button onClick={() => nav("/deposit")}>Deposit</button>
                 <button onClick={() => nav("/placeOrder")}>Place Order</button>
                 <button onClick={() => nav("/wallet/withdraw")}>Withdraw</button>
-                <button onClick={() => nav("/settings")}>Settings</button>
             </div>
         </section>
       )}

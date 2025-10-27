@@ -1,0 +1,270 @@
+version: '3.8'
+
+services:
+
+  # GATEWAY SERVICE - Load Balanced
+  gateway-1:
+    build:
+      context: ./gatewayService
+      dockerfile: Dockerfile
+    container_name: gateway-1
+    ports:
+      - "8080:8080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-brokerx-secret-key}
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8080
+    depends_on:
+      - auth-service-1
+      - client-service-1  
+      - wallet-service-1
+      - order-service-1
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gateway-2:
+    build:
+      context: ./gatewayService
+      dockerfile: Dockerfile
+    container_name: gateway-2
+    ports:
+      - "8081:8080"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-brokerx-secret-key}
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8080
+    depends_on:
+      - auth-service-1
+      - client-service-1
+      - wallet-service-1
+      - order-service-1
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AUTH SERVICE - Multiple Instances
+  auth-service-1:
+    container_name: auth-service-1
+    build:
+      context: ./authService/authService
+      dockerfile: Dockerfile
+    ports:
+      - "8101:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8081
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  auth-service-2:
+    container_name: auth-service-2
+    build:
+      context: ./authService/authService
+      dockerfile: Dockerfile
+    ports:
+      - "8102:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8081
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # CLIENT SERVICE - Multiple Instances  
+  client-service-1:
+    container_name: client-service-1
+    build:
+      context: ./clientService/clientService
+      dockerfile: Dockerfile
+    ports:
+      - "8201:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  client-service-2:
+    container_name: client-service-2
+    build:
+      context: ./clientService/clientService
+      dockerfile: Dockerfile
+    ports:
+      - "8202:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # WALLET SERVICE - Multiple Instances
+  wallet-service-1:
+    container_name: wallet-service-1
+    build:
+      context: ./walletService/walletService
+      dockerfile: Dockerfile
+    ports:
+      - "8301:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8083
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  wallet-service-2:
+    container_name: wallet-service-2
+    build:
+      context: ./walletService/walletService
+      dockerfile: Dockerfile
+    ports:
+      - "8302:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8083
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ORDER SERVICE - Multiple Instances  
+  order-service-1:
+    container_name: order-service-1
+    build:
+      context: ./orderService/orderService
+      dockerfile: Dockerfile
+    ports:
+      - "8401:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8084
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    depends_on:
+      - rabbitmq
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  order-service-2:
+    container_name: order-service-2
+    build:
+      context: ./orderService/orderService
+      dockerfile: Dockerfile
+    ports:
+      - "8402:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8084
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    depends_on:
+      - rabbitmq
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MATCHING SERVICE - Single Instance (stateful)
+  matching-service:
+    container_name: matching-service
+    build:
+      context: ./matchingService/matchingService
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8085
+    volumes:
+      - ./data:/data
+    networks:
+      - brokerx-network
+    depends_on:
+      - rabbitmq
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # RABBITMQ MESSAGE BROKER
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: brokerx-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=brokerx
+      - RABBITMQ_DEFAULT_PASS=brokerx123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  brokerx-network:
+    driver: bridge
