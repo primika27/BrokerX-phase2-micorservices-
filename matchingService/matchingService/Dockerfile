@@ -1,23 +1,23 @@
-# Utiliser une image de base avec JDK 21
-FROM openjdk:21-jdk-slim
+# Utiliser une image de base avec JDK 21 et Maven
+FROM maven:3.9.4-openjdk-21-slim
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier tous les fichiers nécessaires
-COPY . .
+# Copier pom.xml pour télécharger les dépendances
+COPY pom.xml .
 
-# Rendre le script mvnw exécutable, télécharger les dépendances et installer curl
-RUN chmod +x ./mvnw && \
-    ./mvnw dependency:go-offline -B && \
+# Télécharger les dépendances et installer curl
+RUN mvn dependency:go-offline -B && \
     apt-get update && \
     apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Code source déjà copié ci-dessus
+# Copier le reste du code source
+COPY src ./src
 
 # Construire l'application
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Exposer le port
 EXPOSE 8085
