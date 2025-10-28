@@ -22,7 +22,7 @@ Ce guide explique comment configurer et valider un runner GitHub Actions self-ho
 
 ### 1.1 Création de l'utilisateur dédié
 ```bash
-# Créer l'utilisateur pour le runner GitHub Actions
+# Créer l'utilisateur pour le runner GitHub Actions----
 sudo useradd -m -s /bin/bash gha-runner
 sudo usermod -aG docker gha-runner
 
