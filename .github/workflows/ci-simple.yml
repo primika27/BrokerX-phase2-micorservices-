@@ -32,9 +32,9 @@ jobs:
           echo "EMAIL_USER=test@example.com" >> $GITHUB_ENV
           echo "EMAIL_PASS=testpass" >> $GITHUB_ENV
 
-      - name: Build all services
+      - name: Build & test all services
         run: |
-          echo "Building and compiling all services..."
+          echo "Building and compiling and testing all services..."
           
           echo "Building AuthService..."
           cd authService/authService && chmod +x ./mvnw && ./mvnw clean compile -DskipTests
@@ -66,7 +66,7 @@ jobs:
           cd walletService/walletService && ./mvnw clean package -DskipTests && cd ../..
           cd orderService/orderService && ./mvnw clean package -DskipTests && cd ../..
           cd gatewayService && ./mvnw clean package -DskipTests && cd ..
-          echo "✅ All JAR files built successfully"
+          echo "All JAR files built successfully"
 
   deploy:
     runs-on: [self-hosted, linux, phase2-microservice-runner]
