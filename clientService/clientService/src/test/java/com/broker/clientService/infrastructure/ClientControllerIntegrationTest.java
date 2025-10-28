@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -17,12 +18,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest(
-    exclude = {
-        SecurityAutoConfiguration.class
-    },
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
     classes = {com.broker.clientService.ClientServiceApplication.class, com.broker.clientService.infrastructure.config.TestConfig.class}
 )
+@EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
