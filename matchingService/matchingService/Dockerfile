@@ -4,10 +4,8 @@ FROM openjdk:21-jdk-slim
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier le fichier pom.xml et les scripts mvnw
-COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
+# Copier tous les fichiers nécessaires
+COPY . .
 
 # Rendre le script mvnw exécutable, télécharger les dépendances et installer curl
 RUN chmod +x ./mvnw && \
@@ -16,8 +14,7 @@ RUN chmod +x ./mvnw && \
     apt-get install -y curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copier le code source
-COPY src ./src
+# Code source déjà copié ci-dessus
 
 # Construire l'application
 RUN ./mvnw clean package -DskipTests
