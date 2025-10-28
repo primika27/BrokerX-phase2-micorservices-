@@ -1,0 +1,10 @@
+{
+  "instances": 2,
+  "rps": 8.145511275193194,
+  "p95_latency": 111.44841000000005,
+  "avg_latency": 75.34829030303032,
+  "error_rate": 85.45454545454545,
+  "total_requests": 330,
+  "max_vus": 60,
+  "duration": 40.5131107
+}

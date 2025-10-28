@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # 1 Instance Configuration
+  - job_name: 'gateway-service'
+    static_configs:
+      - targets: ['gateway-service:8080']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8101']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'client-service'
+    static_configs:
+      - targets: ['client-service:8201']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'wallet-service'
+    static_configs:
+      - targets: ['wallet-service:8301']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:8401']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'matching-service'
+    static_configs:
+      - targets: ['matching-service:8501']
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    metrics_path: '/actuator/prometheus'

@@ -1,0 +1,15 @@
+{
+  "test_type": "REALISTIC_LOAD_BALANCING",
+  "instances": 1,
+  "timestamp": "2025-10-28T16:54:52.069Z",
+  "rps": 33.80004155037092,
+  "total_requests": 9392,
+  "latency_avg": 316.0294097529817,
+  "latency_p50": 16.25685,
+  "latency_p95": 3439.731579999999,
+  "latency_max": 9478.6571,
+  "error_rate": 90.0447189097104,
+  "lb_error_rate": 100,
+  "max_vus": 30,
+  "duration_seconds": 277.86948090000004
+}

@@ -28,66 +28,48 @@ scrape_configs:
     scrape_interval: 15s
     metrics_path: '/metrics'
 
-  # BrokerX Microservices
+  # BrokerX Microservices - Load Balanced
   - job_name: 'brokerx-gateway'
     static_configs:
-      - targets: ['host.docker.internal:8080']
+      - targets: ['host.docker.internal:8080', 'host.docker.internal:8081']
     metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
+    scrape_interval: 15s
     scrape_timeout: 10s
-    labels:
-      service: 'gateway'
-      tier: 'api'
 
   - job_name: 'brokerx-auth-service'
     static_configs:
-      - targets: ['host.docker.internal:8081']
+      - targets: ['host.docker.internal:8101', 'host.docker.internal:8102']
     metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
+    scrape_interval: 15s
     scrape_timeout: 10s
-    labels:
-      service: 'auth'
-      tier: 'business'
 
   - job_name: 'brokerx-client-service'
     static_configs:
-      - targets: ['host.docker.internal:8082']
+      - targets: ['host.docker.internal:8201', 'host.docker.internal:8202']
     metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
+    scrape_interval: 15s
     scrape_timeout: 10s
-    labels:
-      service: 'client'
-      tier: 'business'
 
   - job_name: 'brokerx-wallet-service'
     static_configs:
-      - targets: ['host.docker.internal:8083']
+      - targets: ['host.docker.internal:8301', 'host.docker.internal:8302']
     metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
+    scrape_interval: 15s
     scrape_timeout: 10s
-    labels:
-      service: 'wallet'
-      tier: 'business'
 
   - job_name: 'brokerx-order-service'
     static_configs:
-      - targets: ['host.docker.internal:8084']
+      - targets: ['host.docker.internal:8401', 'host.docker.internal:8402']
     metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
+    scrape_interval: 15s
     scrape_timeout: 10s
-    labels:
-      service: 'order'
-      tier: 'business'
 
   - job_name: 'brokerx-matching-service'
     static_configs:
-      - targets: ['host.docker.internal:8085']
+      - targets: ['host.docker.internal:8501']
     metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
+    scrape_interval: 15s
     scrape_timeout: 10s
-    labels:
-      service: 'matching'
-      tier: 'business'
 
   # Prometheus self-monitoring
   - job_name: 'prometheus'

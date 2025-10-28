@@ -2,7 +2,7 @@
 
 This directory contains comprehensive performance testing scripts for the BrokerX microservices platform using k6.
 
-## 🎯 Test Types
+## Test Types
 
 ### 1. Load Test (`brokerx-load-test.js`)
 - **Purpose**: Simulate normal expected traffic patterns
@@ -22,7 +22,7 @@ This directory contains comprehensive performance testing scripts for the Broker
 - **Spike Load**: 1500 users in 10 seconds
 - **Use Case**: Validate auto-scaling and circuit breaker patterns
 
-## 📋 Prerequisites
+## Prerequisites
 
 1. **k6 Installation**
    ```bash
@@ -46,7 +46,7 @@ This directory contains comprehensive performance testing scripts for the Broker
    - Ensure market data is available
    - Verify authentication endpoints are accessible
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Windows
 ```cmd
@@ -75,7 +75,7 @@ chmod +x run-load-tests.sh
 ./run-load-tests.sh spike prod
 ```
 
-## 📊 Monitoring During Tests
+## Monitoring During Tests
 
 ### Key Metrics to Watch
 
@@ -100,7 +100,7 @@ chmod +x run-load-tests.sh
   - Load Testing Metrics
   - Infrastructure Resources
 
-## 🎛️ Test Configuration
+## Test Configuration
 
 ### Environment Variables
 ```bash
@@ -122,7 +122,7 @@ Edit test files to modify:
 - **Request patterns**: Adjust probability weights
 - **Thresholds**: Modify `options.thresholds`
 
-## 📈 Results Analysis
+## Results Analysis
 
 ### Output Files
 Results are saved to `./results/YYYYMMDD_HHMMSS/`:
@@ -156,7 +156,7 @@ Results are saved to `./results/YYYYMMDD_HHMMSS/`:
    - Check service discovery
    - Review firewall settings
 
-## 🔧 Advanced Configuration
+## Advanced Configuration
 
 ### Custom Scenarios
 
@@ -190,7 +190,7 @@ k6 cloud brokerx-load-test.js
 k6 run --out influxdb=http://influxdb:8086/k6 brokerx-load-test.js
 ```
 
-## 🚨 Safety Guidelines
+## Safety Guidelines
 
 ### Production Testing
 - **Schedule**: Run during low-traffic periods
@@ -211,14 +211,14 @@ If system becomes unstable:
 4. Consider scaling down services
 5. Alert incident response team
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [k6 Documentation](https://k6.io/docs/)
 - [Performance Testing Best Practices](https://k6.io/docs/testing-guides/load-testing/)
 - [BrokerX Architecture Documentation](../docs/arc42/docs.md)
 - [Monitoring Setup Guide](../monitoring/README.md)
 
-## 🤝 Contributing
+## Contributing
 
 To add new tests or improve existing ones:
 1. Create feature branch
@@ -227,10 +227,9 @@ To add new tests or improve existing ones:
 4. Test on staging environment
 5. Submit pull request
 
-## 📞 Support
+## Support
 
 For issues with load testing:
 - Check logs in `./results/` directory
 - Review Grafana dashboards
 - Consult team documentation
-- Contact DevOps team for infrastructure issues

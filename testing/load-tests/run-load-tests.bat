@@ -26,7 +26,7 @@ if "%ENVIRONMENT%"=="local" (
     exit /b 1
 )
 
-echo 🚀 Starting BrokerX Load Tests
+echo 🚀Starting BrokerX Load Tests
 echo Environment: %ENVIRONMENT% (%BASE_URL%)
 echo Test Type: %TEST_TYPE%
 echo Results Directory: %RESULTS_DIR%

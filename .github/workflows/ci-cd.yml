@@ -143,11 +143,11 @@ jobs:
   deploy:
     runs-on: [self-hosted, linux, vm-lab]
     needs: [test, security-scan]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
     
-    environment:
-      name: production
-      url: http://your-vm-ip:8080
+    # environment:
+    #   name: production
+    #   url: http://localhost:8080
     
     steps:
       - name: Checkout code
@@ -161,27 +161,29 @@ jobs:
       - name: Set up deployment directory
         run: |
           DEPLOY_DIR="/home/gha-runner/brokerx-microservices"
-          cd /home/gha-runner
           
-          # Clone or update repository
+          # Create backup if existing deployment
           if [ -d "$DEPLOY_DIR" ]; then
-            cd $DEPLOY_DIR
-            git pull origin ${{ github.ref_name }}
-          else
-            git clone ${{ github.repository_owner }}/${{ github.event.repository.name }} $DEPLOY_DIR
-            cd $DEPLOY_DIR
+            echo "Creating backup of existing deployment..."
+            sudo cp -r "$DEPLOY_DIR" "/home/gha-runner/brokerx-backups/backup-$(date +%Y%m%d_%H%M%S)"
+            sudo rm -rf "$DEPLOY_DIR"
           fi
+          
+          # Copy source code from checkout
+          sudo cp -r "$GITHUB_WORKSPACE" "$DEPLOY_DIR"
+          sudo chown -R gha-runner:gha-runner "$DEPLOY_DIR"
+          cd "$DEPLOY_DIR"
 
       - name: Create production environment file
         run: |
           cd /home/gha-runner/brokerx-microservices
-          cat > .env << EOF
-          # JWT Configuration
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          cat > .env << 'EOF'
+          # JWT Configuration (default for testing - should be overridden in production)
+          JWT_SECRET=YnJva2VyWFNlY3JldEtleUZvckpXVFNpZ25pbmdTdXBlckxvbmdTdHJpbmdUaGF0SXNTZWN1cmU=
           
-          # Email Configuration
-          EMAIL_USER=${{ secrets.EMAIL_USER }}
-          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          # Email Configuration (optional for development)
+          EMAIL_USER=test@example.com
+          EMAIL_PASS=testpass
           
           # Database Paths (Production)
           DB_PATH_AUTH=/home/gha-runner/brokerx-data/authdb
@@ -190,8 +192,14 @@ jobs:
           DB_PATH_ORDER=/home/gha-runner/brokerx-data/orderdb
           
           # Monitoring
-          GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          GRAFANA_ADMIN_PASSWORD=admin123
+          
+          # Spring Profiles
+          SPRING_PROFILES_ACTIVE=docker
           EOF
+          
+          echo "Environment file created with default values"
+          echo "Note: Configure GitHub secrets for production values"
 
       - name: Create data directories
         run: |
