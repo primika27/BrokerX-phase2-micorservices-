@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy to VM
+      - name: Deploy to the VM
         run: |
           cd /home/log430/BrokerX-phase2-micorservices || git clone https://github.com/primika27/BrokerX-phase2-micorservices-.git /home/log430/BrokerX-phase2-micorservices
           cd /home/log430/BrokerX-phase2-micorservices
