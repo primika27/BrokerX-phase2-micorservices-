@@ -69,7 +69,7 @@ jobs:
           echo "All JAR files built successfully"
 
   deploy:
-    runs-on: [self-hosted, linux, phase2-microservice-runner]
+    runs-on: self-hosted
     needs: test
     if: github.ref == 'refs/heads/main'
     steps:
