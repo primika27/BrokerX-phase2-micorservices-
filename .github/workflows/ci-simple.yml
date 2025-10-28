@@ -77,13 +77,14 @@ jobs:
       
       - name: Deploy to VM
         run: |
-          echo "Starting deployment from GitHub Actions workspace..."
+          echo "Starting deployment..."
           pwd && ls -la
-          echo "Cleaning up existing containers and networks..."
-          docker compose down --remove-orphans || true
-          docker system prune -f || true
-          echo "Building fresh containers..."
+          echo "Killing processes using common ports..."
+          sudo fuser -k 8080/tcp 8081/tcp 8082/tcp 8083/tcp 8084/tcp 8085/tcp 3306/tcp 6379/tcp || true
+          echo "Stopping existing containers..."
+          docker compose down || true
+          echo "Building services..."
           docker compose build --no-cache
           echo "Starting services..."
           docker compose up -d
-          echo "Deployment completed successfully"
+          echo "Deployment completed"
