@@ -75,12 +75,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy to the VM
+      - name: Deploy to VM
         run: |
-          cd /home/log430/BrokerX-phase2-micorservices || git clone https://github.com/primika27/BrokerX-phase2-micorservices-.git /home/log430/BrokerX-phase2-micorservices
-          cd /home/log430/BrokerX-phase2-micorservices
-          git pull origin main
-          docker compose down || true
+          echo "Starting deployment from GitHub Actions workspace..."
+          pwd && ls -la
+          echo "Cleaning up existing containers and networks..."
+          docker compose down --remove-orphans || true
+          docker system prune -f || true
+          echo "Building fresh containers..."
           docker compose build --no-cache
+          echo "Starting services..."
           docker compose up -d
-          echo "Deployment completed"
+          echo "Deployment completed successfully"
