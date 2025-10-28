@@ -1,22 +1,18 @@
-# Utiliser une image de base avec JDK 21 et Maven
-FROM maven:3.9.4-openjdk-21-slim
+# Utiliser une approche simple avec compilation locale
+FROM openjdk:21-jdk-slim
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Copier pom.xml pour télécharger les dépendances
-COPY pom.xml .
-
-# Télécharger les dépendances et installer curl
-RUN mvn dependency:go-offline -B && \
-    apt-get update && \
-    apt-get install -y curl && \
+# Installer Maven
+RUN apt-get update && \
+    apt-get install -y maven curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Copier le reste du code source
-COPY src ./src
+# Copier tout le projet
+COPY . .
 
-# Construire l'application
+# Construire l'application avec Maven
 RUN mvn clean package -DskipTests
 
 # Exposer le port
