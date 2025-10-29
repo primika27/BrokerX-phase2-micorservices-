@@ -88,4 +88,21 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getOrderStatus(@RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail) {
+        if (clientEmail == null || clientEmail.isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "Request must go through Gateway - Missing authentication header");
+            return ResponseEntity.badRequest().body(error);
+        }
+        
+        Map<String, Object> orderStatus = orderService.getOrderStatus(clientEmail);
+        
+        if (orderStatus.containsKey("error")) {
+            return ResponseEntity.badRequest().body(orderStatus);
+        } else {
+            return ResponseEntity.ok(orderStatus);
+        }
+    }
+
 }

@@ -83,49 +83,121 @@ public class OrderMatchingService {
 
         if (bestMatch != null) {
             // Execute FOK trade
-            int tradeQuantity = newOrder.getQuantity(); // FOK means full quantity
-
-            // Update quantities
-            newOrder.setRemainingQuantity(0);
-            bestMatch.setRemainingQuantity(bestMatch.getRemainingQuantity() - tradeQuantity);
-
-            // Update statuses
-            newOrder.setStatus("FILLED");
-            if (bestMatch.getRemainingQuantity() <= 0) {
-                bestMatch.setStatus("FILLED");
-            } else {
-                bestMatch.setStatus("PARTIALLY_FILLED"); // Counter order might be partially filled
-            }
-
-            // Save updated orders
-            matchingOrderRepository.save(newOrder);
-            matchingOrderRepository.save(bestMatch);
-
-            System.out.println("FOK Matched " + tradeQuantity + " shares of " + newOrder.getStockSymbol() +
-                               " between new order " + newOrder.getOrderId() +
-                               " and existing order " + bestMatch.getOrderId());
-
-            // Publish a Trade event
-            String tradeId = java.util.UUID.randomUUID().toString();
-            Trade trade = new Trade(
-                tradeId,
-                newOrder.getOrderType().equals("BUY") ? newOrder.getOrderId() : bestMatch.getOrderId(),
-                newOrder.getOrderType().equals("SELL") ? newOrder.getOrderId() : bestMatch.getOrderId(),
-                newOrder.getStockSymbol(),
-                tradeQuantity,
-                bestMatch.getPrice(), // Trade price is the price of the existing order
-                java.time.LocalDateTime.now()
-            );
-            rabbitTemplate.convertAndSend(RabbitMQConfig.MATCHING_QUEUE, trade); // Send to matchingQueue for now
-            System.out.println("Published Trade event: " + trade);
+            executeTrade(newOrder, bestMatch, newOrder.getQuantity());
 
         } else {
-            // FOK order cannot be fully filled immediately, so it's cancelled
-            newOrder.setStatus("CANCELLED");
-            newOrder.setRemainingQuantity(0);
-            matchingOrderRepository.save(newOrder);
-            System.out.println("FOK order " + newOrder.getOrderId() + " for " + newOrder.getQuantity() +
-                               " shares of " + newOrder.getStockSymbol() + " cancelled (not fully fillable).");
+            // No existing counter-order found, create a synthetic market maker order for demo purposes
+            System.out.println("No counter-order found for " + newOrder.getOrderId() + 
+                             ", creating synthetic market maker order for immediate matching");
+            
+            MatchingOrder marketMakerOrder = createSyntheticCounterOrder(newOrder);
+            if (marketMakerOrder != null) {
+                matchingOrderRepository.save(marketMakerOrder);
+                executeTrade(newOrder, marketMakerOrder, newOrder.getQuantity());
+            } else {
+                // Fallback: cancel the order
+                newOrder.setStatus("CANCELLED");
+                newOrder.setRemainingQuantity(0);
+                matchingOrderRepository.save(newOrder);
+                System.out.println("Order " + newOrder.getOrderId() + " cancelled (no counter-order available).");
+            }
+        }
+    }
+
+    // Create a synthetic counter-order for market making (demo purposes)
+    private MatchingOrder createSyntheticCounterOrder(MatchingOrder originalOrder) {
+        try {
+            String counterOrderType = originalOrder.getOrderType().equals("BUY") ? "SELL" : "BUY";
+            
+            // Create synthetic market maker order at the same price
+            MatchingOrder marketMakerOrder = new MatchingOrder(
+                "MARKET_MAKER_" + System.currentTimeMillis(), // Synthetic order ID
+                originalOrder.getStockSymbol(),
+                originalOrder.getQuantity(), // Same quantity to ensure full fill
+                originalOrder.getPrice(), // Match at the requested price
+                counterOrderType
+            );
+            
+            marketMakerOrder.setStatus("PENDING");
+            marketMakerOrder.setRemainingQuantity(originalOrder.getQuantity());
+            
+            System.out.println("Created synthetic market maker order: " + marketMakerOrder.getOrderId() +
+                             " to match against " + originalOrder.getOrderId());
+            
+            return marketMakerOrder;
+        } catch (Exception e) {
+            System.err.println("Error creating synthetic counter-order: " + e.getMessage());
+            return null;
+        }
+    }
+
+    // Execute trade between two orders with delay for demo
+    private void executeTrade(MatchingOrder order1, MatchingOrder order2, int tradeQuantity) {
+        try {
+            System.out.println("Trade will be executed in 10 seconds: " + tradeQuantity + " shares of " + order1.getStockSymbol() +
+                             " between order " + order1.getOrderId() + 
+                             " and order " + order2.getOrderId());
+            
+            // Create a separate thread to handle the delayed execution
+            new Thread(() -> {
+                try {
+                    // Wait for 10 seconds before executing the trade
+                    Thread.sleep(10000);
+                    
+                    // Update quantities
+                    order1.setRemainingQuantity(0);
+                    order2.setRemainingQuantity(order2.getRemainingQuantity() - tradeQuantity);
+
+                    // Update statuses
+                    order1.setStatus("FILLED");
+                    if (order2.getRemainingQuantity() <= 0) {
+                        order2.setStatus("FILLED");
+                    } else {
+                        order2.setStatus("PARTIALLY_FILLED");
+                    }
+
+                    // Save updated orders
+                    matchingOrderRepository.save(order1);
+                    matchingOrderRepository.save(order2);
+
+                    System.out.println("Trade executed after delay: " + tradeQuantity + " shares of " + order1.getStockSymbol() +
+                                     " between order " + order1.getOrderId() + 
+                                     " and order " + order2.getOrderId());
+
+                    // Determine buy/sell order IDs for the trade
+                    String buyOrderId = order1.getOrderType().equals("BUY") ? order1.getOrderId() : order2.getOrderId();
+                    String sellOrderId = order1.getOrderType().equals("SELL") ? order1.getOrderId() : order2.getOrderId();
+                    
+                    // Use the price from the existing order (order2 in most cases, order1 if it's synthetic)
+                    double tradePrice = order2.getOrderId().startsWith("MARKET_MAKER_") ? order1.getPrice() : order2.getPrice();
+
+                    // Publish a Trade event
+                    String tradeId = java.util.UUID.randomUUID().toString();
+                    Trade trade = new Trade(
+                        tradeId,
+                        buyOrderId,
+                        sellOrderId,
+                        order1.getStockSymbol(),
+                        tradeQuantity,
+                        tradePrice,
+                        java.time.LocalDateTime.now()
+                    );
+                    
+                    rabbitTemplate.convertAndSend(RabbitMQConfig.MATCHING_QUEUE, trade);
+                    System.out.println("Published Trade event after delay: " + trade);
+                    
+                } catch (InterruptedException e) {
+                    System.err.println("Trade execution was interrupted: " + e.getMessage());
+                    Thread.currentThread().interrupt();
+                } catch (Exception e) {
+                    System.err.println("Error executing delayed trade: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }).start();
+            
+        } catch (Exception e) {
+            System.err.println("Error setting up delayed trade execution: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

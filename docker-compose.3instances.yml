@@ -339,6 +339,16 @@ services:
       - gateway-service-1
       - gateway-service-2
       - gateway-service-3
+      - frontend
+    networks:
+      - brokerx-network
+
+  frontend:
+    build:
+      context: ./frontend/brokerx-ui
+      dockerfile: ../Dockerfile
+    ports:
+      - "5173:5173"
     networks:
       - brokerx-network
 

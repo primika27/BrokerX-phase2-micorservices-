@@ -9,8 +9,8 @@ export default function Deposit() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      // Send amount as URL parameter instead of request body
-      const response = await fetch(`/api/wallet/deposit?amount=${Number.parseFloat(amount)}`, {
+      // Use direct fetch to backend (like api.ts) instead of Vite proxy
+      const response = await fetch(`http://localhost:8080/api/wallet/deposit?amount=${Number.parseFloat(amount)}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${jwt}`,

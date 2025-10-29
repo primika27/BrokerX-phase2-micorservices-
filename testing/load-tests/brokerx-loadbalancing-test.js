@@ -33,10 +33,32 @@ export const options = {
         'http_req_failed': ['rate<0.30'],      // Accepter 30% échec (sans auth)
         'db_query_latency': ['p(95)<1000'],    // Requêtes DB < 1s
     },
+    // Configuration pour Prometheus/Grafana
+    ext: {
+        prometheus: {
+            urls: ['http://localhost:9090/api/v1/write'],
+            job: 'k6-loadbalancing-test',
+            instance: `brokerx-${INSTANCE_COUNT}-instances`,
+            pushInterval: '10s',
+            tags: {
+                instance_count: INSTANCE_COUNT,
+                test_type: 'load_balancing',
+                environment: 'development'
+            }
+        }
+    }
 };
 
 const INSTANCE_COUNT = __ENV.INSTANCES || '2';
 const BASE_URL = 'http://localhost:80';
+
+// Configuration des tags Prometheus pour identifier les tests
+const TEST_TAGS = {
+    instance_count: INSTANCE_COUNT,
+    test_type: 'load_balancing_baseline',
+    environment: 'development',
+    test_id: `lb-${INSTANCE_COUNT}instances-${Date.now()}`
+};
 
 // ============================================================================
 // ENDPOINTS STRATÉGIQUES BASÉS SUR L'ARCHITECTURE RÉELLE
@@ -226,20 +248,33 @@ export default function() {
         tags: {
             endpoint: endpoint.path,
             category: endpoint.category,
-            cacheable: endpoint.cacheable.toString()
+            cacheable: endpoint.cacheable.toString(),
+            instance_count: INSTANCE_COUNT,
+            test_type: 'load_balancing',
+            service: endpoint.path.split('/')[2] || 'unknown'  // Extract service name
         }
     });
     const duration = Date.now() - startTime;
     
-    // Métriques personnalisées
-    requestsPerEndpoint.add(1, { endpoint: endpoint.path });
+    // Métriques personnalisées avec tags pour Grafana
+    requestsPerEndpoint.add(1, { 
+        endpoint: endpoint.path,
+        instance_count: INSTANCE_COUNT,
+        service: endpoint.path.split('/')[2] || 'unknown'
+    });
     
     if (endpoint.category === 'db_query') {
-        dbQueryLatency.add(duration);
+        dbQueryLatency.add(duration, {
+            instance_count: INSTANCE_COUNT,
+            endpoint: endpoint.path
+        });
     }
     
     if (endpoint.requiresAuth && response.status === 401) {
-        authErrors.add(1);
+        authErrors.add(1, {
+            instance_count: INSTANCE_COUNT,
+            endpoint: endpoint.path
+        });
     }
     
     // Validation

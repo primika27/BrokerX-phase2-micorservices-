@@ -78,7 +78,9 @@ jobs:
       - name: Deploy to VM
         run: |
           echo "Starting deployment..."
-          pwd && ls -la
+          cd /home/log430/BrokerX-phase2-micorservices || git clone https://github.com/primika27/BrokerX-phase2-micorservices-.git /home/log430/BrokerX-phase2-micorservices
+          cd /home/log430/BrokerX-phase2-micorservices
+          git pull origin main
           echo "Killing processes using common ports..."
           sudo fuser -k 8080/tcp 8081/tcp 8082/tcp 8083/tcp 8084/tcp 8085/tcp 3306/tcp 6379/tcp || true
           echo "Stopping existing containers..."

@@ -10,6 +10,14 @@ public class OrderDto implements Serializable {
     private String orderType; // e.g., "BUY" or "SELL"
 
     // Getters and Setters
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
     public String getOrderDtoId() {
         return orderId;
     }

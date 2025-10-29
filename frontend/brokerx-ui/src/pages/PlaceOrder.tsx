@@ -32,8 +32,8 @@ export default function PlaceOrder() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      // Use the correct endpoint and send data as URL parameters
-      const response = await fetch(`/api/orders/placeOrder?symbol=${symbol}&quantity=${qty}&orderType=${side}`, {
+      // Use direct call to backend (like api.ts) instead of Vite proxy
+      const response = await fetch(`http://localhost:8080/api/orders/placeOrder?symbol=${symbol}&quantity=${qty}&orderType=${side}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${jwt}`,

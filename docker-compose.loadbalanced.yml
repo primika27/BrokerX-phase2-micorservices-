@@ -2,6 +2,17 @@ version: '3.8'
 
 services:
 
+  # FRONTEND SERVICE
+  frontend:
+    build:
+      context: ./frontend/brokerx-ui
+      dockerfile: ../Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - brokerx-network
+
   # GATEWAY SERVICE - Load Balanced
   gateway-1:
     build:
