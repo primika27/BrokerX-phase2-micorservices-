@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.cache.annotation.Cacheable;
 import com.broker.clientService.Infrastructure.client.AuthClient;
 @RestController
 @RequestMapping("/api/clients")

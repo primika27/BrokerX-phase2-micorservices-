@@ -23,7 +23,7 @@ import java.time.Duration;
  * - /api/wallet/balance (2118-2216 requêtes - calculs complexes)
  */
 @Configuration
-@EnableCaching
+// @EnableCaching  // Disabled for submission
 public class RedisConfig {
 
     @Bean

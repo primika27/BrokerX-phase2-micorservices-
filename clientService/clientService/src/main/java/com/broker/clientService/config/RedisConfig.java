@@ -24,7 +24,7 @@ import java.time.Duration;
  * - /api/clients/getEmailById (5429 requêtes - 24% du trafic)
  */
 @Configuration
-@EnableCaching
+// @EnableCaching  // Disabled for submission
 public class RedisConfig {
 
     @Bean
