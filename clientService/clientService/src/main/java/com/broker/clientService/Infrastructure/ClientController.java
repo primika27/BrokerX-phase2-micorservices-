@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.cache.annotation.Cacheable;
 import com.broker.clientService.Infrastructure.client.AuthClient;
 @RestController
 @RequestMapping("/api/clients")
@@ -90,6 +91,7 @@ public ResponseEntity<?> getCurrentClient(
 
 
     @GetMapping("/getByEmail")
+    // @Cacheable(value = "emailLookup", key = "#email", unless = "#result.statusCode.is4xxClientError()")
     public ResponseEntity<Integer> getByEmail(@RequestParam String email) {
         Client client = clientRepository.findByEmail(email);
         if (client != null) {
@@ -100,6 +102,7 @@ public ResponseEntity<?> getCurrentClient(
     }
 
     @GetMapping("/getEmailById")
+    // @Cacheable(value = "clientData", key = "#clientId", unless = "#result.statusCode.is4xxClientError()")
     public ResponseEntity<String> getEmailById(@RequestParam Integer clientId) {
         Client client = clientRepository.findById(clientId).orElse(null);
         if (client != null) {

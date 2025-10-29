@@ -1,0 +1,55 @@
+﻿[
+    {
+        "IsExpected":  true,
+        "Endpoint":  "/actuator/health",
+        "Description":  "Health Check",
+        "Status":  "Success",
+        "StatusCode":  200
+    },
+    {
+        "IsExpected":  true,
+        "Endpoint":  "/api/auth/test",
+        "Description":  "Auth Service Test",
+        "Status":  "Success",
+        "StatusCode":  200
+    },
+    {
+        "IsExpected":  true,
+        "Endpoint":  "/api/clients/test",
+        "Description":  "Client Service Test",
+        "Status":  "Success",
+        "StatusCode":  200
+    },
+    {
+        "Description":  "Wallet Service Test",
+        "Error":  "The remote server returned an error: (401) Unauthorized.",
+        "StatusCode":  0,
+        "IsExpected":  false,
+        "Endpoint":  "/api/wallet/test",
+        "Status":  "Failed"
+    },
+    {
+        "Description":  "Client by Email",
+        "Error":  "The remote server returned an error: (401) Unauthorized.",
+        "StatusCode":  0,
+        "IsExpected":  false,
+        "Endpoint":  "/api/clients/getByEmail?email=user1@test.com",
+        "Status":  "Failed"
+    },
+    {
+        "Description":  "Email by ID",
+        "Error":  "The remote server returned an error: (401) Unauthorized.",
+        "StatusCode":  0,
+        "IsExpected":  false,
+        "Endpoint":  "/api/clients/getEmailById?clientId=1",
+        "Status":  "Failed"
+    },
+    {
+        "Description":  "Wallet Balance",
+        "Error":  "The remote server returned an error: (401) Unauthorized.",
+        "StatusCode":  0,
+        "IsExpected":  false,
+        "Endpoint":  "/api/wallet/balance?ownerEmail=user1@test.com",
+        "Status":  "Failed"
+    }
+]

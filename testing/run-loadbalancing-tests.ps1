@@ -97,9 +97,13 @@ foreach ($instanceCount in $InstanceCounts) {
     Write-Host ""
     
     # 1. Sélectionner le fichier docker-compose approprié
-    $dockerComposeFile = "docker-compose.$instanceCount`instances.yml"
+    $dockerComposeFile = "docker-compose.loadbalanced.yml"
     if ($instanceCount -eq 1) {
-        $dockerComposeFile = "docker-compose.1instance.yml"
+        $dockerComposeFile = "docker-compose.1instance.yml"  
+    } elseif ($instanceCount -eq 3) {
+        $dockerComposeFile = "docker-compose.3instances.yml"
+    } elseif ($instanceCount -eq 4) {
+        $dockerComposeFile = "docker-compose.4instances.yml"
     }
 
     if (-not (Test-Path $dockerComposeFile)) {

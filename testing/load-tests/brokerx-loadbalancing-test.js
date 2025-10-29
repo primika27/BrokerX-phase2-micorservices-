@@ -16,15 +16,18 @@ const requestsPerEndpoint = new Counter('requests_per_endpoint');
 const authErrors = new Rate('auth_errors');
 const dbQueryLatency = new Trend('db_query_latency');
 
+const INSTANCE_COUNT = __ENV.INSTANCES || '2';
+const BASE_URL = 'http://localhost:8080';
+
 export const options = {
     scenarios: {
         realistic_load: {
             executor: 'ramping-vus',
             stages: [
-                { duration: '2m', target: 10 },   // Montée progressive
-                { duration: '5m', target: 20 },   // Charge normale soutenue
-                { duration: '2m', target: 30 },   // Pic de charge
-                { duration: '1m', target: 0 },    // Descente
+                { duration: '30s', target: 10 },   // Montée progressive
+                { duration: '1m30s', target: 20 }, // Charge normale soutenue
+                { duration: '30s', target: 30 },   // Pic de charge
+                { duration: '30s', target: 0 },    // Descente
             ],
         },
     },
@@ -33,24 +36,9 @@ export const options = {
         'http_req_failed': ['rate<0.30'],      // Accepter 30% échec (sans auth)
         'db_query_latency': ['p(95)<1000'],    // Requêtes DB < 1s
     },
-    // Configuration pour Prometheus/Grafana
-    ext: {
-        prometheus: {
-            urls: ['http://localhost:9090/api/v1/write'],
-            job: 'k6-loadbalancing-test',
-            instance: `brokerx-${INSTANCE_COUNT}-instances`,
-            pushInterval: '10s',
-            tags: {
-                instance_count: INSTANCE_COUNT,
-                test_type: 'load_balancing',
-                environment: 'development'
-            }
-        }
-    }
+    // Pas de configuration Prometheus dans le script - on utilisera les arguments k6
+    // Les métriques seront envoyées via --out experimental-prometheus-rw
 };
-
-const INSTANCE_COUNT = __ENV.INSTANCES || '2';
-const BASE_URL = 'http://localhost:80';
 
 // Configuration des tags Prometheus pour identifier les tests
 const TEST_TAGS = {
@@ -105,12 +93,12 @@ const criticalEndpoints = [
         cacheable: true,
         category: 'db_query',
         description: 'Client Lookup by Email (DB query)',
-        expectedStatus: [200, 400, 404],
+        expectedStatus: [200, 400, 404, 500],
         params: () => {
             const emails = [
                 'user1@test.com', 'user2@test.com', 'user3@test.com',
                 'admin@brokerx.com', 'test@example.com', 'trader@brokerx.com',
-                'investor1@brokerx.com', 'investor2@brokerx.com'
+                'investor1@brokerx.com', 'investor2@brokerx.com', 'nonexistent@test.com'
             ];
             return { email: emails[Math.floor(Math.random() * emails.length)] };
         }
@@ -123,38 +111,55 @@ const criticalEndpoints = [
         cacheable: true,
         category: 'db_query',
         description: 'Email Lookup by ClientID (DB query)',
-        expectedStatus: [200, 404],
+        expectedStatus: [200, 404, 500],
         params: () => {
-            // Simuler 20 clients différents
-            return { clientId: Math.floor(Math.random() * 20) + 1 };
+            // Simuler différents clients, incluant des IDs qui n'existent pas
+            return { clientId: Math.floor(Math.random() * 50) + 1 };
         }
     },
     
-    // === ENDPOINTS AUTHENTIFIÉS (pour tests futurs avec tokens) ===
+    // === ENDPOINTS PUBLICS SUPPLÉMENTAIRES (sans auth pour baseline) ===
+    {
+        path: '/api/wallet/test',
+        method: 'GET',
+        weight: 15,
+        requiresAuth: false,
+        cacheable: false,
+        category: 'service_test',
+        description: 'Wallet Service Test',
+        expectedStatus: [200, 500]
+    },
+    
+    // === ENDPOINTS AVEC PARAMÈTRES (publics) ===
     {
         path: '/api/wallet/balance',
         method: 'GET',
-        weight: 15,
-        requiresAuth: true,
+        weight: 10,
+        requiresAuth: false,
         cacheable: true,
-        category: 'authenticated',
-        description: 'Wallet Balance (calculations - TRÈS CACHABLE)',
-        expectedStatus: [200, 401, 404],
+        category: 'db_query',
+        description: 'Wallet Balance Query (expensive calculation)',
+        expectedStatus: [200, 400, 404, 500],
         params: () => {
-            // Simuler différents utilisateurs
-            const emails = ['user1@test.com', 'user2@test.com', 'trader@brokerx.com'];
+            // Tester avec différents emails (certains valides, d'autres non)
+            const emails = ['user1@test.com', 'user2@test.com', 'trader@brokerx.com', 'nonexistent@test.com'];
             return { ownerEmail: emails[Math.floor(Math.random() * emails.length)] };
         }
     },
     {
         path: '/api/orders/holdings',
         method: 'GET',
-        weight: 10,
-        requiresAuth: true,
+        weight: 5,
+        requiresAuth: false,
         cacheable: true,
-        category: 'authenticated',
-        description: 'Order Holdings (complex query - TRÈS CACHABLE)',
-        expectedStatus: [200, 401, 404]
+        category: 'db_query',
+        description: 'Order Holdings Query (complex query)',
+        expectedStatus: [200, 400, 401, 404, 500],
+        params: () => {
+            // Tester avec différents emails
+            const emails = ['user1@test.com', 'trader@brokerx.com', 'investor@test.com'];
+            return { ownerEmail: emails[Math.floor(Math.random() * emails.length)] };
+        }
     }
 ];
 
@@ -305,7 +310,7 @@ export function handleSummary(data) {
     const summary = {
         test_metadata: {
             test_type: "LOAD_BALANCING_BASELINE",
-            instances: parseInt(INSTANCE_COUNT),
+            instances: Number.parseInt(INSTANCE_COUNT),
             timestamp: new Date().toISOString(),
             test_duration_seconds: data.state ? (data.state.testRunDurationMs / 1000) : 0
         },

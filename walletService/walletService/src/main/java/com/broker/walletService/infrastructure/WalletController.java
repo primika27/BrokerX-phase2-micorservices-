@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
+// import org.springframework.cache.annotation.Cacheable;
 
 import com.broker.walletService.Application.WalletService;
 
@@ -98,6 +99,8 @@ public class WalletController {
 
     // Unified balance endpoint that handles both user and service calls
     @GetMapping("/balance")
+    // @Cacheable(value = "walletBalance", key = "#ownerEmail != null ? #ownerEmail : #authenticatedUser", 
+    //            unless = "#result.statusCode.is4xxClientError() or #result.statusCode.is5xxServerError()")
     public ResponseEntity<Double> getBalance(
             @RequestHeader(value = "X-Authenticated-User", required = false) String authenticatedUser,
             @RequestParam(value = "ownerEmail", required = false) String ownerEmail) {
@@ -129,5 +132,10 @@ public class WalletController {
         
         // Si aucune authentification valide
         return ResponseEntity.status(403).body(0.0);
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("WalletService is working!");
     }
 }
