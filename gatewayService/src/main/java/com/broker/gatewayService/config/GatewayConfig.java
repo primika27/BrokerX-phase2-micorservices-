@@ -56,6 +56,16 @@ public class GatewayConfig {
                 .filters(f -> f.filter(jwtAuthFilter))
                 .uri("http://matching-service:8085"))
 
+            // Market Data REST API routes
+            .route("market_data_api", r -> r.path("/api/market-data/**")
+                .filters(f -> f.filter(jwtAuthFilter))
+                .uri("http://market-data-service:8086"))
+
+            // Market Data WebSocket service routes (experimental)
+            .route("market_data_websocket", r -> r.path("/ws/market-data/**")
+                .filters(f -> f.filter(jwtAuthFilter))
+                .uri("ws://market-data-service:8086"))
+
             .build();
     }
 

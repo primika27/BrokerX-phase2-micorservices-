@@ -1,5 +1,5 @@
-# Utiliser une image de base avec JDK 21
-FROM openjdk:21-jdk-slim
+# Utiliser Eclipse Temurin JDK 21 comme image de base
+FROM eclipse-temurin:21-jdk-alpine
 
 # Définir le répertoire de travail
 WORKDIR /app

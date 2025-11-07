@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../lib/useAuth";
 import { apiGet } from "../lib/api";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
+import MarketQuotes from "../components/MarketQuotes";
 
 type Me = { id: number; name: string; email: string; status?: string };
 type Tx = { id: string; type: "DEPOSIT" | "WITHDRAWAL" | "FILL"; amount: number; createdAt: string };
@@ -24,25 +25,21 @@ export default function Dashboard() {
     let cancelled = false;
     let intervalId: number | null = null;
 
-    async function load() {
+    async function loadFinancialData() {
       if (!jwt) {
         setLoading(false);
         return;
       }
       
       try {
-        setLoading(true);
+        setLoading(true); // Show loading on every refresh
         setErr(null);
-        console.log('Loading dashboard data...');
+        console.log('Loading financial data...');
         
-        const [meR, balR, holdingsR, statusR] = await Promise.all([
-          apiGet<Me>("/api/clients/me", jwt).catch(e => { 
-            console.error('Failed to fetch user:', e); 
-            throw e; 
-          }),
+        const [balR, holdingsR, statusR] = await Promise.all([
           apiGet<number>("/api/wallet/balance", jwt).catch(e => { 
             console.error('Failed to fetch balance:', e); 
-            return 0; // Default to 0 if balance fails
+            return 0; // Default to 0 if fails
           }),
           apiGet<Holdings>("/api/orders/holdings", jwt).catch(e => { 
             console.error('Failed to fetch holdings:', e); 
@@ -56,29 +53,28 @@ export default function Dashboard() {
         
         if (cancelled) return;
         
-        console.log('Dashboard data loaded:', { meR, balR, holdingsR, statusR });
-        setMe(meR);
+        console.log('Financial data loaded:', { balR, holdingsR, statusR });
         setBalance(typeof balR === 'number' ? balR : 0);
         setHoldings(holdingsR || { holdings: {}, totalPositions: 0 });
         setOrderStatus(statusR || { orders: [], totalOrders: 0 });
         setTxs([]); // No transaction history endpoint available yet
       } catch (e: unknown) {
         if (!cancelled) {
-          console.error('Dashboard loading error:', e);
+          console.error('Financial data loading error:', e);
           setErr(String((e as Error).message || e));
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoading(false); // Hide loading after every refresh
       }
     }
 
     // Initial load
-    load();
+    loadFinancialData();
 
-    // Set up auto-refresh every 3 seconds to show PENDING -> FILLED transitions
+    // Set up auto-refresh every 3 seconds for financial data only (not market data)
     intervalId = setInterval(() => {
       if (!cancelled) {
-        load();
+        loadFinancialData();
       }
     }, 3000);
 
@@ -86,7 +82,37 @@ export default function Dashboard() {
       cancelled = true; 
       if (intervalId) clearInterval(intervalId);
     };
-  }, [jwt]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jwt]); // Only depend on jwt to avoid infinite loops
+
+  // Separate useEffect for user data (loads once only)
+  useEffect(() => {
+    async function loadUserData() {
+      if (!jwt) return;
+      
+      try {
+        setLoading(true);
+        console.log('Loading user data...');
+        
+        const meR = await apiGet<Me>("/api/clients/me", jwt);
+        setMe(meR);
+      } catch (e: unknown) {
+        console.error('User data loading error:', e);
+        setErr(String((e as Error).message || e));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (!me) {
+      loadUserData();
+    }
+  }, [jwt, me]);
+
+  // Memoized MarketQuotes to prevent unnecessary re-renders
+  const marketQuotesComponent = useMemo(() => (
+    <MarketQuotes userToken={jwt} />
+  ), [jwt]);
 
   return (
     <>
@@ -95,7 +121,9 @@ export default function Dashboard() {
         <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <h1 style={{ margin: 0 }}>Dashboard</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: "12px", color: "#666" }}>Auto-refresh: 3s</span>
+          <span style={{ fontSize: "12px", color: "#666" }}>
+             Market: Real-time | Orders: Auto-refresh 3s
+          </span>
           <button onClick={() => window.location.reload()} style={{ padding: "8px 16px", fontSize: "14px" }}>
             Manual Refresh
           </button>
@@ -129,6 +157,11 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Market Data Section - Uses WebSocket, isolated from auto-refresh */}
+      <section style={{ marginTop: 24 }}>
+        {marketQuotesComponent}
+      </section>
+
       <section style={{ marginTop: 24 }}>
         <h3>Holdings</h3>
         <div style={{ padding: "16px", border: "1px solid #ccc", borderRadius: "8px" }}>
@@ -146,6 +179,8 @@ export default function Dashboard() {
           )}
         </div>
       </section>
+
+
 
       <section style={{ marginTop: 24 }}>
         <h3>Recent Orders</h3>

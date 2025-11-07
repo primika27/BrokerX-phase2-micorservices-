@@ -32,6 +32,7 @@ services:
       - wallet-service
       - order-service
       - matching-service
+      - market-data-service
     networks:
       - brokerx-network
     # healthcheck:
@@ -167,6 +168,23 @@ services:
           #   timeout: 10s
           #   retries: 3
           #   start_period: 60s
+
+  # MARKET DATA SERVICE
+  market-data-service:
+    container_name: market-data-service
+    build:
+      context: ./marketDataServices
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:h2:mem:marketdb
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
+    networks:
+      - brokerx-network
   
   rabbitmq:          
         image: rabbitmq:3-management
