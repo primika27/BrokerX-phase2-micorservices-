@@ -1,0 +1,46 @@
+@startuml dss_uc04_subscription_marche
+title DSS - UC04: Abonnement aux données de marché (WebSocket)
+
+actor "Utilisateur" as User
+participant ":System" as System
+
+User -> System : subscribe(SubscriptionRequest)
+activate System
+
+alt Validation réussie
+    System --> User : sendSubscriptionConfirmation(symbols[])
+    
+    loop Diffusion automatique (@Scheduled fixedRate = 1000ms)
+        System --> User : broadcastMarketData(MarketQuote)
+        note right : generateMarketQuote(symbol)\nconvertAndSendToUser()
+    end
+
+else request.symbols.length > 10
+    System --> User : sendError("Trop de symboles demandés. Maximum: 10")
+    
+else request.symbols == null || request.symbols.length == 0
+    System --> User : sendError("Aucun symbole spécifié")
+    
+else extractUserEmailFromHeaders() == null
+    System --> User : sendError("Authentification échouée")
+end
+
+opt Désabonnement partiel
+    User -> System : unsubscribe(SubscriptionRequest)
+    System --> User : removeSubscription(userEmail, symbols[])
+end
+
+opt Désabonnement complet  
+    User -> System : unsubscribe(SubscriptionRequest) 
+    note right : avec symbols[] vide
+    System --> User : removeAllSubscriptions(userEmail)
+end
+
+opt Snapshot OrderBook
+    User -> System : getSnapshot(symbol)
+    System --> User : sendOrderBookSnapshot(userEmail, symbol)
+end
+
+deactivate System
+
+@enduml

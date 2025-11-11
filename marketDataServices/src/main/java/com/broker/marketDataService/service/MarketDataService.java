@@ -207,6 +207,18 @@ public class MarketDataService {
         }
         return quotes;
     }
+    public MarketQuote generateQuote(String symbol) {
+        double currentPrice = lastPrices.get(symbol);
+        
+        // Spread bid/ask (0.1% du prix)
+        double spread = currentPrice * 0.001;
+        double bid = currentPrice - spread / 2;
+        double ask = currentPrice + spread / 2;
+        
+        int volume = ThreadLocalRandom.current().nextInt(100, 10000);
+        
+        return new MarketQuote(symbol, bid, ask, currentPrice, volume);
+    }
 
     public List<MarketQuote> getAllLatestQuotes() {
         return getLatestQuotes(supportedSymbols);

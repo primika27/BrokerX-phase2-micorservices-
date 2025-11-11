@@ -1,0 +1,88 @@
+@startuml rdcu_uc04_diffusion_donnees
+title RDCU UC04b - Génération et diffusion des données de marché en temps réel
+
+participant ":SpringTaskScheduler" as Scheduler
+participant ":MarketDataService" as BusinessService
+participant ":userSubscriptions : Map<String, Set<String>>" as SubsMap
+participant ":userSubscriptionTypes : Map<String, String>" as TypeMap
+participant ":lastPrices : Map<String, Double>" as PriceCache
+participant ":ThreadLocalRandom" as Random
+participant ":MarketQuote" as Quote
+participant ":SimpMessagingTemplate" as MessageTemplate
+
+-> Scheduler : @Scheduled(fixedRate = 1000)\nevery 1 second
+activate Scheduler
+
+Scheduler -> BusinessService : broadcastMarketData()
+activate BusinessService
+
+BusinessService -> SubsMap : entrySet()
+SubsMap --> BusinessService : Set<Entry<String, Set<String>>>
+
+alt userSubscriptions.isEmpty() == false
+    loop Pour chaque utilisateur abonné
+        BusinessService -> BusinessService : String userEmail = entry.getKey()
+        BusinessService -> BusinessService : Set<String> symbols = entry.getValue()
+        BusinessService -> TypeMap : get(userEmail)
+        TypeMap --> BusinessService : String subscriptionType
+        
+        alt subscriptionType.equals("quotes") || subscriptionType == null
+            loop Pour chaque symbole abonné
+                BusinessService -> BusinessService : generateMarketQuote(symbol)
+                activate BusinessService
+                
+                BusinessService -> PriceCache : get(symbol)
+                PriceCache --> BusinessService : double currentPrice
+                
+                BusinessService -> Random : nextDouble()
+                Random --> BusinessService : double randomValue
+                
+                BusinessService -> BusinessService : calculateVolatility()\ndouble volatility = 0.02\ndouble change = (randomValue - 0.5) * 2 * volatility * currentPrice
+                
+                BusinessService -> BusinessService : double newPrice = Math.max(0.01, currentPrice + change)
+                
+                BusinessService -> PriceCache : put(symbol, newPrice)
+                PriceCache --> BusinessService : previous price
+                
+                BusinessService -> BusinessService : calculateSpread()\ndouble spread = newPrice * 0.001\ndouble bid = newPrice - spread/2\ndouble ask = newPrice + spread/2
+                
+                BusinessService -> Random : nextInt(100, 10000)
+                Random --> BusinessService : int volume
+                
+                BusinessService -> Quote : new MarketQuote(symbol, bid, ask, newPrice, volume)
+                activate Quote
+                
+                BusinessService -> Quote : setChange(change)
+                BusinessService -> Quote : setChangePercent((change/currentPrice)*100)
+                Quote --> BusinessService : marketQuote configured
+                deactivate Quote
+                
+                deactivate BusinessService
+                
+                BusinessService -> MessageTemplate : convertAndSendToUser(userEmail, "/queue/quotes", marketQuote)
+                activate MessageTemplate
+                MessageTemplate -> MessageTemplate : Résoudre la destination utilisateur\n/user/{userEmail}/queue/quotes
+                MessageTemplate --> BusinessService : Message sent
+                deactivate MessageTemplate
+            end
+        end
+    end
+else
+    BusinessService -> BusinessService : return early (no active subscriptions)
+end
+
+deactivate BusinessService
+deactivate Scheduler
+
+note over BusinessService, MessageTemplate
+    Le processus se répète automatiquement
+    toutes les secondes grâce à @Scheduled
+    
+    Les prix évoluent de façon réaliste avec:
+    - Volatilité de ±2%
+    - Spread bid/ask de 0.1%
+    - Volume aléatoire entre 100-10000
+    - Persistance des prix entre les cycles
+end note
+
+@enduml
