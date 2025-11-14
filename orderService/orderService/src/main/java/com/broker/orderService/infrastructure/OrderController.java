@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.http.ResponseEntity;
 import com.broker.orderService.Application.OrderService;
+import com.broker.orderService.saga.OrderSagaOrchestrator;
+import com.broker.orderService.saga.SagaResult;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -37,6 +42,9 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private OrderSagaOrchestrator sagaOrchestrator;
 
     @PostMapping("/placeOrder")
     public ResponseEntity<String> placeOrder(
@@ -102,6 +110,85 @@ public class OrderController {
             return ResponseEntity.badRequest().body(orderStatus);
         } else {
             return ResponseEntity.ok(orderStatus);
+        }
+    }
+
+    /**
+     * Cancel a PENDING order using Saga pattern
+     * DELETE /api/orders/{orderId}
+     */
+    @DeleteMapping("/{orderId}")
+    public ResponseEntity<Map<String, Object>> cancelOrder(
+            @PathVariable int orderId,
+            @RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        if (clientEmail == null || clientEmail.isEmpty()) {
+            response.put("error", "Request must go through Gateway - Missing authentication header");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        try {
+            SagaResult result = sagaOrchestrator.cancelOrderSaga(orderId, clientEmail);
+            
+            if (result.isSuccess()) {
+                response.put("success", true);
+                response.put("message", result.getMessage());
+                response.put("steps", result.getExecutedSteps());
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("error", result.getErrorMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to cancel order: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    /**
+     * Modify a PENDING order using Saga pattern
+     * PUT /api/orders/{orderId}
+     */
+    @PutMapping("/{orderId}")
+    public ResponseEntity<Map<String, Object>> modifyOrder(
+            @PathVariable int orderId,
+            @RequestHeader(value = "X-Authenticated-User", required = true) String clientEmail,
+            @RequestParam(required = false) Double newPrice,
+            @RequestParam(required = false) Integer newQuantity) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        if (clientEmail == null || clientEmail.isEmpty()) {
+            response.put("error", "Request must go through Gateway - Missing authentication header");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        if (newPrice == null && newQuantity == null) {
+            response.put("error", "At least one of newPrice or newQuantity must be provided");
+            return ResponseEntity.badRequest().body(response);
+        }
+        
+        try {
+            SagaResult result = sagaOrchestrator.modifyOrderSaga(orderId, clientEmail, newPrice, newQuantity);
+            
+            if (result.isSuccess()) {
+                response.put("success", true);
+                response.put("message", result.getMessage());
+                response.put("steps", result.getExecutedSteps());
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("error", result.getErrorMessage());
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Failed to modify order: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
         }
     }
 

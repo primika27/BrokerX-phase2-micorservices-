@@ -26,3 +26,27 @@ export async function apiPost<T, B = unknown>(
   if (!r.ok) throw new Error(await r.text());
   return r.json() as Promise<T>;
 }
+
+export async function apiPut<T>(
+  path: string,
+  jwt?: string
+): Promise<T> {
+  const r = await fetch(`${base}${path}`, {
+    method: "PUT",
+    headers: headers(jwt),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<T>;
+}
+
+export async function apiDelete<T>(
+  path: string,
+  jwt?: string
+): Promise<T> {
+  const r = await fetch(`${base}${path}`, {
+    method: "DELETE",
+    headers: headers(jwt),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<T>;
+}
