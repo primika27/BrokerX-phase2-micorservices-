@@ -1,71 +1,79 @@
 @startuml rdcu_uc05_consultation_holdings
-title UC05b - Consultation des holdings client (Architecture Microservices)
+title RDCU - UC05b: Consultation des holdings 
+skinparam style strictuml
+skinparam noteBackgroundColor #FEFECE
+skinparam noteBorderColor #A80036
 
-participant "Client" as Client
-participant "Gateway" as Gateway
-participant "AuthService" as Auth
-participant "OrderController" as OrderController
-participant "OrderService" as OrderService
-participant "ClientServiceClient" as ClientClient
-participant "OrderRepository" as OrderRepo
+'--- Participants (Software Objects) ---
+actor "Client (Actor)" as Actor
+participant ":Gateway" as Gateway
+participant ":OrderController" as Controller
+participant ":OrderService" as Service
+participant ":ClientServiceClient" as InfrastructureClient
+participant ":OrderRepository" as Repo
 
-Client -> Gateway : GET /api/orders/holdings\nBearer JWT Token
+'--- System Operation ---
+Actor -> Gateway : GET /api/orders/holdings
 activate Gateway
 
-Gateway -> Gateway : JwtAuthFilter.validateToken()
-Gateway -> Gateway : Extract clientEmail from JWT
-Gateway -> OrderController : getHoldings(clientEmail)\nX-Authenticated-User: clientEmail
-activate OrderController
+    note right of Gateway
+        Gateway handles security 
+        and routing (Infrastructure)
+    end note
 
-alt Missing authentication header
-    OrderController --> Gateway : 400 "Request must go through Gateway"
-    Gateway --> Client : 400 Bad Request
-else Valid authentication
-    OrderController -> OrderService : getHoldings(clientEmail)
-    activate OrderService
+    Gateway -> Controller : getHoldings(clientEmail)
+    activate Controller
     
-    OrderService -> ClientClient : GET /api/clients/getByEmail\nX-Service-Call: order-service\nemail=clientEmail
-    activate ClientClient
-    ClientClient -> Gateway : GET /api/clients/getByEmail\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
-    activate Gateway
-    Gateway -> Gateway : Route to client-service:8082
-    Gateway -> ClientService : getByEmail(clientEmail)
-    activate ClientService
-    ClientService --> Gateway : clientId
-    deactivate ClientService
-    Gateway --> ClientClient : clientId
-    deactivate Gateway
-    ClientClient --> OrderService : ResponseEntity<Integer>
-    deactivate ClientClient
-    
-    alt Client not found
-        OrderService --> OrderController : Map{"error": "Client not found"}
-        OrderController --> Gateway : 400 Bad Request
-        Gateway --> Client : 400 Bad Request
-    else Client found
-        OrderService -> OrderRepo : findByClientId(clientId)
-        OrderRepo --> OrderService : List<Order>
+    '--- Controller Delegation ---
+    Controller -> Service : getHoldings(clientEmail)
+    activate Service
+
+        '--- Step 1: External Service Call (via Feign Interface) ---
+        ' Ref: ClientServiceClient.java
+        ' method: getByEmail(String authenticatedUser, String email)
         
-        OrderService -> OrderService : Map<String, Integer> holdings = new HashMap()
-        loop Pour chaque ordre du client
-            alt orderType = "BUY" && status = FILLED
-                OrderService -> OrderService : holdings.put(symbol, holdings.get(symbol) + quantity)
-            else orderType = "SELL" && status = FILLED  
-                OrderService -> OrderService : holdings.put(symbol, holdings.get(symbol) - quantity)
-            end
+        Service -> InfrastructureClient : getByEmail(clientEmail, clientEmail)
+        activate InfrastructureClient
+            
+            note right of InfrastructureClient
+                @FeignClient(url="http://gateway:8080")
+                Mapping: /api/clients/getByEmail
+                Header: X-Authenticated-User
+            end note
+            
+            ' This shows the INTERNAL implementation of the Feign Client sending the request out
+            InfrastructureClient -> Gateway : HTTP GET /api/clients/getByEmail\nHeader: X-Authenticated-User: clientEmail
+            activate Gateway
+            Gateway --> InfrastructureClient : HTTP 200 OK (Body: clientId)
+            deactivate Gateway
+
+        InfrastructureClient --> Service : ResponseEntity<Integer>(clientId)
+        deactivate InfrastructureClient
+
+        '--- Step 2: Domain Logic (Calculations) ---
+        
+        alt clientId found
+            Service -> Service: getCurrentHoldings(clientId)
+            Service -> Repo : findFilledOrdersByClientId(clientId)
+            activate Repo
+            Repo --> Service : Map<Holdings>
+            deactivate Repo
+            
+            
+            '--- Create Response ---
+            Service -> Service : createResultMap(email, holdings, holdings.size)
+            
+            Service --> Controller : Map<String, Object> result
+        else client not found
+            Service --> Controller : Map (Error: Client not found)
         end
-        
-        OrderService -> OrderService : Remove holdings with quantity <= 0
-        OrderService -> OrderService : Add current ETF prices to response
-        
-        OrderService --> OrderController : Map<String, Object>{holdings, prices, totalValue}
-        deactivate OrderService
-        
-        OrderController --> Gateway : 200 OK + holdings data
-        Gateway --> Client : 200 OK + JSON response
-        deactivate OrderController
-    end
-end
 
+    deactivate Service
+
+    Controller --> Gateway : ResponseEntity (JSON)
+    deactivate Controller
+
+Gateway --> Actor : Affichage des holdings sur /Dashboard
 deactivate Gateway
+
 @enduml

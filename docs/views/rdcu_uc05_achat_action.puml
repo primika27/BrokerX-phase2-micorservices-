@@ -1,102 +1,110 @@
-@startuml rdcu_uc05_achat_action
-title UC05 - Placement ordre d'achat (Architecture Microservices)
+@startuml rdcu_uc05_placement_ordre_merged
+title RDCU - UC05: Placement d'ordre
 
-participant "Client" as Client
-participant "Gateway" as Gateway
-participant "AuthService" as Auth
-participant "OrderController" as OrderController
-participant "OrderService" as OrderService
-participant "ClientServiceClient" as ClientClient
-participant "WalletServiceClient" as WalletClient
-participant "OrderRepository" as OrderRepo
-participant "TransactionRepository" as TransactionRepo
-participant "OrderMessageProducer" as RabbitMQ
-participant "MatchingService" as MatchingService
+skinparam style strictuml
+skinparam noteBackgroundColor #FEFECE
+skinparam noteBorderColor #A80036
 
-Client -> Gateway : POST /api/orders/placeOrder\n{symbol, quantity, orderType}\nBearer JWT Token
+actor "Client" as Actor
+participant ":Gateway" as Gateway
+participant ":OrderController" as Controller
+participant ":OrderService" as Service
+participant ":WalletServiceClient" as WalletClient
+participant ":ClientServiceClient" as ClientClient
+participant ":OrderRepository" as Repo
+participant ":OrderMessageProducer" as Producer
+queue ":RabbitTemplate" as Queue
+
+Actor -> Gateway : POST /api/orders/placeOrder\n{symbol, qty, type="BUY"}
 activate Gateway
 
-Gateway -> Gateway : JwtAuthFilter.validateToken()
-Gateway -> Gateway : Extract clientEmail from JWT
-Gateway -> OrderController : placeOrder(clientEmail, symbol, quantity, orderType)\nX-Authenticated-User: clientEmail
-activate OrderController
-
-OrderController -> OrderController : validate ETF_PRICES.contains(symbol)
-alt Symbol not found
-    OrderController --> Gateway : 400 "Symbol not found"
-    Gateway --> Client : 400 Bad Request
-else Symbol valid
-    OrderController -> OrderController : calculate total = price * quantity
-    OrderController -> OrderService : acheterAction(clientEmail, symbol, price, quantity)
-    activate OrderService
+    Gateway -> Gateway : Validate JWT\nExtract email
     
-    OrderService -> WalletClient : GET /api/wallet/balance\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
-    activate WalletClient
-    WalletClient -> Gateway : GET /api/wallet/balance\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
-    activate Gateway
-    Gateway -> Gateway : Route to wallet-service:8083
-    Gateway -> WalletService : getBalance(clientEmail)
-    activate WalletService
-    WalletService --> Gateway : balance
-    deactivate WalletService
-    Gateway --> WalletClient : balance
-    deactivate Gateway
-    WalletClient --> OrderService : ResponseEntity<Double>
-    deactivate WalletClient
+    Gateway -> Controller : placeOrder(email, symbol, qty, "BUY")
+    activate Controller
     
-    alt Insufficient balance
-        OrderService --> OrderController : false
-        OrderController --> Gateway : 400 "Order failed. Check your wallet balance"
-        Gateway --> Client : 400 Bad Request
-    else Sufficient balance
-        OrderService -> WalletClient : POST /api/wallet/transaction\nownerEmail=clientEmail&amount=total&type=DEBIT
+    ' --- Validation Layer (Basé sur votre code OrderController) ---
+    Controller -> Controller : validateSymbol(symbol)
+    
+    alt Symbole Invalide (ETF_PRICES.containsKey == false)
+        Controller --> Gateway : 400 Bad Request "Symbol not found"
+        Gateway --> Actor : 400 Bad Request
+    else Symbole Valide
+        
+        Controller -> Controller : price = ETF_PRICES.get(symbol)
+        
+        Controller -> Service : acheterAction(email, symbol, price, qty)
+        activate Service
+        
+        ' --- 1. Vérification Solde (Infrastructure Call) ---
+        ' Signature: getBalance(String authenticatedUser, String ownerEmail)
+        Service -> WalletClient : getBalance(email, email)
         activate WalletClient
-        WalletClient -> Gateway : POST /api/wallet/transaction\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
-        activate Gateway
-        Gateway -> Gateway : Route to wallet-service:8083
-        Gateway -> WalletService : walletTransaction(clientEmail, total, "DEBIT")
-        activate WalletService
-        WalletService --> Gateway : "Debit successful"
-        deactivate WalletService
-        Gateway --> WalletClient : "Debit successful"
-        deactivate Gateway
-        WalletClient --> OrderService : ResponseEntity<String>
+            
+            note right of WalletClient
+                @FeignClient(url="http://gateway:8080")
+                Mapping:/api/wallet/balance
+                Header:X-Authentificated-User
+            end note
+            
+            WalletClient -> Gateway : GET /api/wallet/balance\nHeader X-Authenticated-User: email
+            activate Gateway
+            Gateway --> WalletClient : 200 OK (Body: balance)
+            deactivate Gateway
+            
+        WalletClient --> Service : ResponseEntity balance<Double>
         deactivate WalletClient
         
-        OrderService -> ClientClient : GET /api/clients/getByEmail\nX-Service-Call: order-service\nemail=clientEmail
-        activate ClientClient
-        ClientClient -> Gateway : GET /api/clients/getByEmail\nX-Service-Call: order-service\nX-Authenticated-User: clientEmail
-        activate Gateway
-        Gateway -> Gateway : Route to client-service:8082
-        Gateway -> ClientService : getByEmail(clientEmail)
-        activate ClientService
-        ClientService --> Gateway : clientId
-        deactivate ClientService
-        Gateway --> ClientClient : clientId
-        deactivate Gateway
-        ClientClient --> OrderService : ResponseEntity<Integer>
-        deactivate ClientClient
         
-        OrderService -> OrderService : create Order(clientId, symbol, price, quantity, "BUY", FILLED)
-        OrderService -> OrderRepo : save(order)
-        OrderRepo --> OrderService : savedOrder
+        alt Fonds Insuffisants
+            Service --> Controller : message error: "Solde insuffisant"
+            Controller --> Gateway : 400 Bad Request "Order failed"
+            Gateway --> Actor : 400 Bad Request
+        else Fonds OK
         
-        OrderService -> OrderService : create Transaction(orderId, ORDER, total, description)
-        OrderService -> TransactionRepo : save(transaction)
-        TransactionRepo --> OrderService : savedTransaction
-        
-        OrderService -> RabbitMQ : sendNewOrderToMatchingService(orderDto)
-        activate RabbitMQ
-        RabbitMQ -> MatchingService : process order via RabbitMQ
-        deactivate RabbitMQ
-        
-        OrderService --> OrderController : true
-        deactivate OrderService
-        OrderController --> Gateway : 200 "Order processed by OrderController"
-        Gateway --> Client : 200 OK
-        deactivate OrderController
+            ' --- 2. Récupération ID Client (Infrastructure Call) ---
+            ' Signature: getByEmail(String authenticatedUser, String email)
+            Service -> ClientClient : getByEmail(email, email)
+            note right of ClientClient
+                @FeignClient(url="http://gateway:8080")
+                Mapping: /api/clients/getByEmail
+                Header: X-Authenticated-User
+            end note
+
+            activate ClientClient
+                ClientClient -> Gateway : HTTP GET /api/clients/getByEmail
+                activate Gateway
+                Gateway --> ClientClient : 200 OK (Body: clientId)
+                deactivate Gateway
+            ClientClient --> Service : ResponseEntity<Integer>(clientId)
+            deactivate ClientClient
+            
+            ' --- 3. Persistance (Logique Domaine) ---
+            ' Explicit object creation as requested
+            Service -> Service : Order order = new Order(clientId, symbol, price, qty, "BUY", PENDING)
+            
+            Service -> Repo : save(order)
+            activate Repo
+            Repo --> Service : savedOrder
+            deactivate Repo
+            
+            ' --- 4. Envoi Asynchrone (Infrastructure RabbitMQ) ---
+            ' Explicit DTO creation as requested
+            Service -> Service : OrderDto orderDto = new OrderDto(savedOrder)
+            
+            Service -> Producer : sendNewOrderToMatchingService(orderDto)
+            activate Producer
+                Producer -> Queue : convertAndSend("orderQueue", orderDto)
+            deactivate Producer
+            
+            Service --> Controller : true
+            
+            Controller --> Gateway : 200 OK "Order submitted"
+            Gateway --> Actor : 200 OK
+        end
     end
-end
+    deactivate Service
+    deactivate Controller
 
 deactivate Gateway
 @enduml

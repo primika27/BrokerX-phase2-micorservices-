@@ -5,19 +5,19 @@ actor ":Client" as Client
 participant ":Système" as System
 
 == Placement d'ordre d'achat ==
-Client -> System : placerOrdre(String symbole, int quantite, double prixLimite)
+Client -> System : acheterAction(String symbol,  double price, int quantity)
 alt Fonds suffisants et ordre valide
-    System --> Client : confirmationOrdre(numeroOrdre, statut)
+    System --> Client : message confirmation : "ordre placé avec succès", numéroOrdre, statutOrdre
 else Fonds insuffisants ou ordre invalide
-    System --> Client : erreurOrdre(raison)
+    System --> Client : message erreur : "solde insuffisant" ou "ordre invalide"
 end
 
 == Placement d'ordre de vente ==
-Client -> System : passerOrdreVente(symbole, quantite, prixLimite)
+Client -> System : vendreAction(String symbol,  double price, int quantity)
 alt Actions disponibles et ordre valide
-    System --> Client : confirmationOrdre(numeroOrdre, statut)
+    System --> Client : message confirmation : "ordre placé avec succès", numéroOrdre, statutOrdre
 else Actions insuffisantes ou ordre invalide
-    System --> Client : erreurOrdre(raison)
+    System --> Client : message erreur : "actions insuffisantes" ou "ordre invalide"
 end
 
 @enduml
