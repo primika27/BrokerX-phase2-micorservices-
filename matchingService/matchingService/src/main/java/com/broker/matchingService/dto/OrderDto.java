@@ -8,6 +8,7 @@ public class OrderDto implements Serializable {
     private int quantity;
     private double price;
     private String orderType; // BUY or SELL
+    private String status; // PENDING, CANCELLED, MODIFIED
 
     public OrderDto() {
     }
@@ -18,6 +19,15 @@ public class OrderDto implements Serializable {
         this.quantity = quantity;
         this.price = price;
         this.orderType = orderType;
+    }
+
+    public OrderDto(String orderId, String stockSymbol, int quantity, double price, String orderType, String status) {
+        this.orderId = orderId;
+        this.stockSymbol = stockSymbol;
+        this.quantity = quantity;
+        this.price = price;
+        this.orderType = orderType;
+        this.status = status;
     }
 
     public String getOrderId() {
@@ -58,6 +68,14 @@ public class OrderDto implements Serializable {
 
     public void setOrderType(String orderType) {
         this.orderType = orderType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     @Override

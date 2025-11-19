@@ -10,12 +10,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class OrderMatchingService {
 
     private final MatchingOrderRepository matchingOrderRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
+    
+    // Map to store scheduled trades by order ID so they can be cancelled
+    private final ConcurrentHashMap<String, ScheduledFuture<?>> scheduledTrades = new ConcurrentHashMap<>();
 
     public OrderMatchingService(MatchingOrderRepository matchingOrderRepository, RabbitTemplate rabbitTemplate) {
         this.matchingOrderRepository = matchingOrderRepository;
@@ -138,38 +147,49 @@ public class OrderMatchingService {
                              " between order " + order1.getOrderId() + 
                              " and order " + order2.getOrderId());
             
-            // Create a separate thread to handle the delayed execution
-            new Thread(() -> {
+            // Schedule the trade execution with ability to cancel
+            ScheduledFuture<?> scheduledTrade = scheduler.schedule(() -> {
                 try {
-                    // Wait for 10 seconds before executing the trade
-                    Thread.sleep(10000);
+                    // Check if orders are still PENDING before executing
+                    MatchingOrder currentOrder1 = matchingOrderRepository.findByOrderId(order1.getOrderId());
+                    MatchingOrder currentOrder2 = matchingOrderRepository.findByOrderId(order2.getOrderId());
+                    
+                    if (currentOrder1 == null || !"PENDING".equals(currentOrder1.getStatus())) {
+                        System.out.println("Order " + order1.getOrderId() + " is no longer PENDING, cancelling trade");
+                        return;
+                    }
+                    
+                    if (currentOrder2 == null || !"PENDING".equals(currentOrder2.getStatus())) {
+                        System.out.println("Order " + order2.getOrderId() + " is no longer PENDING, cancelling trade");
+                        return;
+                    }
                     
                     // Update quantities
-                    order1.setRemainingQuantity(0);
-                    order2.setRemainingQuantity(order2.getRemainingQuantity() - tradeQuantity);
+                    currentOrder1.setRemainingQuantity(0);
+                    currentOrder2.setRemainingQuantity(currentOrder2.getRemainingQuantity() - tradeQuantity);
 
                     // Update statuses
-                    order1.setStatus("FILLED");
-                    if (order2.getRemainingQuantity() <= 0) {
-                        order2.setStatus("FILLED");
+                    currentOrder1.setStatus("FILLED");
+                    if (currentOrder2.getRemainingQuantity() <= 0) {
+                        currentOrder2.setStatus("FILLED");
                     } else {
-                        order2.setStatus("PARTIALLY_FILLED");
+                        currentOrder2.setStatus("PARTIALLY_FILLED");
                     }
 
                     // Save updated orders
-                    matchingOrderRepository.save(order1);
-                    matchingOrderRepository.save(order2);
+                    matchingOrderRepository.save(currentOrder1);
+                    matchingOrderRepository.save(currentOrder2);
 
-                    System.out.println("Trade executed after delay: " + tradeQuantity + " shares of " + order1.getStockSymbol() +
-                                     " between order " + order1.getOrderId() + 
-                                     " and order " + order2.getOrderId());
+                    System.out.println("Trade executed after delay: " + tradeQuantity + " shares of " + currentOrder1.getStockSymbol() +
+                                     " between order " + currentOrder1.getOrderId() + 
+                                     " and order " + currentOrder2.getOrderId());
 
                     // Determine buy/sell order IDs for the trade
-                    String buyOrderId = order1.getOrderType().equals("BUY") ? order1.getOrderId() : order2.getOrderId();
-                    String sellOrderId = order1.getOrderType().equals("SELL") ? order1.getOrderId() : order2.getOrderId();
+                    String buyOrderId = currentOrder1.getOrderType().equals("BUY") ? currentOrder1.getOrderId() : currentOrder2.getOrderId();
+                    String sellOrderId = currentOrder1.getOrderType().equals("SELL") ? currentOrder1.getOrderId() : currentOrder2.getOrderId();
                     
                     // Use the price from the existing order (order2 in most cases, order1 if it's synthetic)
-                    double tradePrice = order2.getOrderId().startsWith("MARKET_MAKER_") ? order1.getPrice() : order2.getPrice();
+                    double tradePrice = currentOrder2.getOrderId().startsWith("MARKET_MAKER_") ? currentOrder1.getPrice() : currentOrder2.getPrice();
 
                     // Publish a Trade event
                     String tradeId = java.util.UUID.randomUUID().toString();
@@ -177,7 +197,7 @@ public class OrderMatchingService {
                         tradeId,
                         buyOrderId,
                         sellOrderId,
-                        order1.getStockSymbol(),
+                        currentOrder1.getStockSymbol(),
                         tradeQuantity,
                         tradePrice,
                         java.time.LocalDateTime.now()
@@ -186,17 +206,79 @@ public class OrderMatchingService {
                     rabbitTemplate.convertAndSend(RabbitMQConfig.MATCHING_QUEUE, trade);
                     System.out.println("Published Trade event after delay: " + trade);
                     
-                } catch (InterruptedException e) {
-                    System.err.println("Trade execution was interrupted: " + e.getMessage());
-                    Thread.currentThread().interrupt();
+                    // Remove from scheduled trades map
+                    scheduledTrades.remove(order1.getOrderId());
+                    scheduledTrades.remove(order2.getOrderId());
+                    
                 } catch (Exception e) {
                     System.err.println("Error executing delayed trade: " + e.getMessage());
                     e.printStackTrace();
                 }
-            }).start();
+            }, 10, TimeUnit.SECONDS);
+            
+            // Store the scheduled future so it can be cancelled if needed
+            scheduledTrades.put(order1.getOrderId(), scheduledTrade);
+            scheduledTrades.put(order2.getOrderId(), scheduledTrade);
             
         } catch (Exception e) {
             System.err.println("Error setting up delayed trade execution: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Cancel an order in the matching engine
+     */
+    @Transactional
+    public void cancelOrder(String orderId) {
+        try {
+            MatchingOrder order = matchingOrderRepository.findByOrderId(orderId);
+            if (order != null && "PENDING".equals(order.getStatus())) {
+                order.setStatus("CANCELLED");
+                matchingOrderRepository.save(order);
+                System.out.println("Order " + orderId + " cancelled in matching engine");
+                
+                // Cancel any scheduled trades for this order
+                ScheduledFuture<?> scheduledTrade = scheduledTrades.remove(orderId);
+                if (scheduledTrade != null && !scheduledTrade.isDone()) {
+                    boolean cancelled = scheduledTrade.cancel(false);
+                    System.out.println("Scheduled trade for order " + orderId + " cancelled: " + cancelled);
+                }
+                
+            } else if (order == null) {
+                System.out.println("Order " + orderId + " not found in matching engine (may have already been matched)");
+            } else {
+                System.out.println("Order " + orderId + " cannot be cancelled (status: " + order.getStatus() + ")");
+            }
+        } catch (Exception e) {
+            System.err.println("Error cancelling order " + orderId + ": " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Modify an existing order in the matching engine
+     */
+    @Transactional
+    public void modifyOrder(OrderDto modifiedOrderDto) {
+        try {
+            MatchingOrder existingOrder = matchingOrderRepository.findByOrderId(modifiedOrderDto.getOrderId());
+            if (existingOrder != null && "PENDING".equals(existingOrder.getStatus())) {
+                // Update order details
+                existingOrder.setQuantity(modifiedOrderDto.getQuantity());
+                existingOrder.setPrice(modifiedOrderDto.getPrice());
+                existingOrder.setRemainingQuantity(modifiedOrderDto.getQuantity());
+                matchingOrderRepository.save(existingOrder);
+                System.out.println("Order " + modifiedOrderDto.getOrderId() + " modified in matching engine");
+                
+                // Try to match the modified order
+                matchOrder(existingOrder);
+            } else if (existingOrder == null) {
+                System.out.println("Order " + modifiedOrderDto.getOrderId() + " not found in matching engine");
+            } else {
+                System.out.println("Order " + modifiedOrderDto.getOrderId() + " cannot be modified (status: " + existingOrder.getStatus() + ")");
+            }
+        } catch (Exception e) {
+            System.err.println("Error modifying order " + modifiedOrderDto.getOrderId() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }

@@ -10,6 +10,7 @@ import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import PlaceOrder from "../pages/PlaceOrder";
 import Deposit from "../pages/Deposit";
+import MarketData from "../pages/MarketData";
 import App from "./App";
 
 
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       // protected area
       { path: "dashboard", element: <Protected><Dashboard /></Protected> },
       { path: "placeOrder", element: <Protected><PlaceOrder /></Protected> },
+      { path: "market", element: <Protected><MarketData /></Protected> },
       { path: "deposit", element: <Protected><Deposit /></Protected> },
     ],
   },

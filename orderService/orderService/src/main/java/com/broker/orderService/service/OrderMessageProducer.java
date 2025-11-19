@@ -18,4 +18,20 @@ public class OrderMessageProducer {
         rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_QUEUE, order);
         System.out.println("OrderService sent new order to matchingService: " + order);
     }
+
+    /**
+     Send cancelled order to MatchingService so it can remove it from the OrderBook
+     */
+    public void sendCancelledOrderToMatchingService(OrderDto order) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_QUEUE, order);
+        System.out.println("OrderService sent cancelled order to matchingService: " + order);
+    }
+
+    /**
+      Send modified order to MatchingService so it can update the OrderBook
+     */
+    public void sendModifiedOrderToMatchingService(OrderDto order) {
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_QUEUE, order);
+        System.out.println("OrderService sent modified order to matchingService: " + order);
+    }
 }

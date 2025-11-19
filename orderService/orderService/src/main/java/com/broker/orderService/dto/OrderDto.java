@@ -8,6 +8,7 @@ public class OrderDto implements Serializable {
     private int quantity;
     private double price;
     private String orderType; // e.g., "BUY" or "SELL"
+    private String status; // e.g., "PENDING", "CANCELLED", "MODIFIED"
 
     // Getters and Setters
     public String getOrderId() {
@@ -56,6 +57,14 @@ public class OrderDto implements Serializable {
 
     public void setOrderType(String orderType) {
         this.orderType = orderType;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     @Override

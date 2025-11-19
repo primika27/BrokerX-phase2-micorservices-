@@ -22,6 +22,7 @@ export default function Navigation() {
           <>
             <Link to="/dashboard" style={{ textDecoration: "none", color: "#007bff" }}>Dashboard</Link>
             <Link to="/placeOrder" style={{ textDecoration: "none", color: "#007bff" }}>Place Order</Link>
+            <Link to="/market" style={{ textDecoration: "none", color: "#007bff" }}>Market Data</Link>
             <Link to="/deposit" style={{ textDecoration: "none", color: "#007bff" }}>Deposit</Link>
           </>
         )}

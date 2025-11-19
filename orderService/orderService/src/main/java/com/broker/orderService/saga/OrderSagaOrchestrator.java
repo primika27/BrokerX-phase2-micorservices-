@@ -7,14 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.broker.orderService.domain.Order;
 import com.broker.orderService.domain.OrderStatus;
+import com.broker.orderService.dto.OrderDto;
 import com.broker.orderService.dto.OrderUpdateMessage;
 import com.broker.orderService.infrastructure.client.ClientServiceClient;
 import com.broker.orderService.infrastructure.repo.OrderRepository;
 import com.broker.orderService.infrastructure.client.WalletServiceClient;
 import com.broker.orderService.service.OrderMessageProducer;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Saga Orchestrator pour gérer les transactions distribuées
@@ -76,32 +74,22 @@ public class OrderSagaOrchestrator {
             orderRepository.save(order);
             result.addStep("Order status updated to CANCELLED");
 
-            // Step 3: Refund wallet if it was a BUY order
-            if ("BUY".equalsIgnoreCase(order.getOrderType())) {
-                double refundAmount = order.getPrice() * order.getQuantity();
-                try {
-                    walletServiceClient.walletTransaction(
-                        clientEmail, 
-                        clientEmail, 
-                        refundAmount, 
-                        "CREDIT"
-                    );
-                    result.addStep("Wallet credited: " + refundAmount);
-                } catch (Exception e) {
-                    // Compensation: Rollback order status
-                    order.setStatus(OrderStatus.PENDING);
-                    orderRepository.save(order);
-                    throw new RuntimeException("Failed to credit wallet. Transaction rolled back.", e);
-                }
-            }
+            // Step 3: No wallet refund needed for PENDING orders
+            // The wallet is only debited when order is FILLED, not when it's PENDING
+            result.addStep("No wallet refund needed (order was never debited)");
 
             // Step 4: Notify matching service to remove order from order book
             try {
-                Map<String, Object> cancelMessage = new HashMap<>();
-                cancelMessage.put("orderId", orderId);
-                cancelMessage.put("action", "CANCEL");
-                // orderMessageProducer.sendCancelOrderToMatchingService(cancelMessage);
-                result.addStep("Matching service notified");
+                OrderDto orderDto = new OrderDto();
+                orderDto.setOrderId(String.valueOf(order.getOrderId()));
+                orderDto.setStockSymbol(order.getSymbol());
+                orderDto.setQuantity(order.getQuantity());
+                orderDto.setPrice(order.getPrice());
+                orderDto.setOrderType(order.getOrderType());
+                orderDto.setStatus("CANCELLED"); // Tell MatchingService this is a cancellation
+                // MatchingService will understand this is a cancelled order and remove it
+                orderMessageProducer.sendCancelledOrderToMatchingService(orderDto);
+                result.addStep("Matching service notified of cancellation");
             } catch (Exception e) {
                 System.err.println("Warning: Failed to notify matching service: " + e.getMessage());
                 // Non-critical, order is already cancelled in our system
@@ -159,37 +147,28 @@ public class OrderSagaOrchestrator {
                 return result;
             }
 
-            // Step 2: Calculate old and new totals
-            double oldTotal = order.getPrice() * order.getQuantity();
+            // Step 2: Calculate new total for balance verification
             double newTotalPrice = (newPrice != null ? newPrice : order.getPrice());
             int newTotalQuantity = (newQuantity != null ? newQuantity : order.getQuantity());
             double newTotal = newTotalPrice * newTotalQuantity;
-            double difference = newTotal - oldTotal;
 
-            // Step 3: Adjust wallet if BUY order and price changed
-            if ("BUY".equalsIgnoreCase(order.getOrderType()) && Math.abs(difference) > 0.01) {
+            // Step 3: No wallet adjustment needed for PENDING orders
+            // The wallet is only debited when order is FILLED, not when it's PENDING
+            // So if we modify a PENDING order, there's nothing to adjust yet
+            // We only need to verify the client has sufficient balance for the NEW total
+            if ("BUY".equalsIgnoreCase(order.getOrderType())) {
                 try {
-                    if (difference > 0) {
-                        // Need to debit more money
-                        walletServiceClient.walletTransaction(
-                            clientEmail, 
-                            clientEmail, 
-                            difference, 
-                            "DEBIT"
-                        );
-                        result.addStep("Wallet debited: " + difference);
-                    } else {
-                        // Need to credit back
-                        walletServiceClient.walletTransaction(
-                            clientEmail, 
-                            clientEmail, 
-                            Math.abs(difference), 
-                            "CREDIT"
-                        );
-                        result.addStep("Wallet credited: " + Math.abs(difference));
+                    // Verify client has sufficient balance for the new order total
+                    var balanceResponse = walletServiceClient.getBalance(clientEmail, clientEmail);
+                    if (balanceResponse != null && balanceResponse.getStatusCode().is2xxSuccessful() && balanceResponse.getBody() != null) {
+                        double currentBalance = balanceResponse.getBody();
+                        if (currentBalance < newTotal) {
+                            throw new RuntimeException("Insufficient balance for modified order. Required: " + newTotal + ", Available: " + currentBalance);
+                        }
+                        result.addStep("Balance verified for new order total: " + newTotal);
                     }
                 } catch (Exception e) {
-                    throw new RuntimeException("Failed to adjust wallet. Transaction rolled back.", e);
+                    throw new RuntimeException("Failed to verify balance. Transaction rolled back: " + e.getMessage(), e);
                 }
             }
 
@@ -205,13 +184,16 @@ public class OrderSagaOrchestrator {
 
             // Step 5: Notify matching service about the modification
             try {
-                Map<String, Object> modifyMessage = new HashMap<>();
-                modifyMessage.put("orderId", orderId);
-                modifyMessage.put("action", "MODIFY");
-                modifyMessage.put("newPrice", order.getPrice());
-                modifyMessage.put("newQuantity", order.getQuantity());
-                // orderMessageProducer.sendModifyOrderToMatchingService(modifyMessage);
-                result.addStep("Matching service notified");
+                OrderDto orderDto = new OrderDto();
+                orderDto.setOrderId(String.valueOf(order.getOrderId()));
+                orderDto.setStockSymbol(order.getSymbol());
+                orderDto.setQuantity(order.getQuantity());
+                orderDto.setPrice(order.getPrice());
+                orderDto.setOrderType(order.getOrderType());
+                orderDto.setStatus("MODIFIED"); // Tell MatchingService this is a modification
+                // MatchingService will update its OrderBook with new price/quantity
+                orderMessageProducer.sendModifiedOrderToMatchingService(orderDto);
+                result.addStep("Matching service notified of modification");
             } catch (Exception e) {
                 System.err.println("Warning: Failed to notify matching service: " + e.getMessage());
                 // Non-critical, order is already updated in our system

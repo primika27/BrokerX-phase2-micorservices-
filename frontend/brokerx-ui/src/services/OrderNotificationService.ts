@@ -36,13 +36,11 @@ class OrderNotificationService {
 
     return new Promise((resolve, reject) => {
       // Use SockJS for fallback support
-      const socket = new SockJS('http://localhost:8080/api/orders/ws/order-updates');
+      // Pass JWT token as URL parameter since SockJS doesn't support Authorization header
+      const socket = new SockJS(`http://localhost:8080/api/orders/ws/order-updates?token=${token}`);
 
       this.client = new Client({
         webSocketFactory: () => socket,
-        connectHeaders: {
-          Authorization: `Bearer ${token}`,
-        },
         debug: (str) => {
           console.log('[OrderNotification STOMP]:', str);
         },

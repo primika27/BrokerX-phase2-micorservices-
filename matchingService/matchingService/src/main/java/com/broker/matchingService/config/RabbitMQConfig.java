@@ -13,6 +13,7 @@ public class RabbitMQConfig {
 
     public static final String ORDER_QUEUE = "orderQueue";
     public static final String MATCHING_QUEUE = "matchingQueue";
+    
 
     @Bean
     public Queue orderQueue() {

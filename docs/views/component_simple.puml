@@ -1,97 +1,145 @@
 @startuml component_simple
-title BrokerX Component Diagram
+title BrokerX Component Diagram - Simplified Architecture
 
-package "Frontend (5173)" {
-  [React UI]
-  [Auth Context]
-  [nginx conf]
+!define BUSINESS_COLOR #E8F4FD
+!define INFRASTRUCTURE_COLOR #FFF2CC
+!define DATA_COLOR #F8CECC
+
+package "Frontend Layer" as frontend_layer {
+  component "React UI" as reactui {
+    [WebSocket Client]
+    [API Service Layer]
+    [Auth Context]
+  }
 }
 
-package "Gateway (:8080)" {
-  [Spring Gateway]
-  [JWT Filter]
+package "API Gateway Layer" as gateway_layer {
+  component "Spring Cloud Gateway" as gateway {
+    [JWT Validator]
+    [Route Configuration]
+    [CORS Handler]
+  }
 }
 
-package "Auth Service (:8081)" {
-  [AuthentificationController <<Controller>>]
-  [AuthentificationService <<Service>>]
-  [JwtService <<Service>>]
-  [EmailService <<Service>>]
-  [UserCredentialRepository <<Repository>>]
-  [UserCredential <<Entity>>]
-  [AuthDB (H2) <<Database>>]
+package "Business Services Layer" as business_layer {
+  
+  component "Auth Service" as authsvc {
+    [AuthController]
+    [AuthService + JWT + Email]
+    [UserCredentialRepository]
+  }
+  
+  component "Client Service" as clientsvc {
+    [ClientController]
+    [ClientService]
+    [ClientRepository]
+    [AuthClient (OpenFeign)]
+  }
+  
+  component "Wallet Service" as walletsvc {
+    [WalletController]
+    [WalletService]
+    [WalletRepository]
+  }
+  
+  component "Order Service" as ordersvc {
+    [OrderController]
+    [OrderSagaOrchestrator]
+    [OrderService]
+    [OrderRepository]
+    [OpenFeign Clients]
+    [WebSocket Publisher]
+  }
+  
+  component "Matching Service" as matchingsvc {
+    [OrderMatchingService]
+    [Market Maker Engine]
+    [ScheduledExecutor]
+    [MatchingRepository]
+  }
 }
 
-package "Client Service (8082)" {
-  [ClientController <<Controller>>]
-  [ClientService <<Service>>]
-  [ClientRepository <<Repository>>]
-  [Client <<Entity>>]
-  [AuthClient (Feign) <<Client>>]
-  [ClientDB (H2) <<Database>>]
-}
-package "Wallet Service (:8083)" {
-  [WalletController <<Controller>>]
-  [WalletService <<Service>>]
-  [WalletRepository <<Repository>>]
-  [Wallet <<Entity>>]
-  [WalletDB (H2) <<Database>>]
+package "Infrastructure Layer" as infra_layer {
+  
+  component "Message Broker" as mq {
+    queue "ORDER_QUEUE"
+    queue "MATCHING_QUEUE"
+    [RabbitMQ + JSON]
+  }
+  
+  component "WebSocket Infrastructure" as ws {
+    [STOMP Protocol]
+    [User Queues]
+  }
 }
 
-package "Order Service (:8084)" {
-  [OrderController <<Controller>>]
-  [OrderService <<Service>>]
-  [OrderRepository <<Repository>>]
-  [TransactionRepository <<Repository>>]
-  [Order <<Entity>>]
-  [Transaction <<Entity>>]
-  [WalletServiceClient (Feign) <<Client>>]
-  [ClientServiceClient (Feign) <<Client>>]
-  [OrderMessageProducer <<Producer>>]
-  [OrderDB (H2) <<Database>>]
+package "Persistence Layer" as data_layer {
+  component "Data Access" as dataaccess {
+    [JPA/Hibernate]
+  }
+  
+  database "AuthDB (H2)" as authdb
+  database "ClientDB (H2)" as clientdb
+  database "WalletDB (H2)" as walletdb
+  database "OrderDB (H2)" as orderdb
+  database "MatchingDB (H2)" as matchingdb
 }
 
-package "Matching Service (:8085)" {
-  [MatchingService <<Service>>]
-  [MatchingOrderRepository <<Repository>>]
-  [MatchingOrder <<Entity>>]
-  [OrderMessageListener <<Consumer>>]
-  [MatchingDB (H2) <<Database>>]
-}
+' Main flow connections
+reactui --> gateway : REST API
+reactui ..> ws : WebSocket
 
-database "AuthDB" 
-database "ClientDB"
-database "WalletDB" 
-database "OrderDB"
-database "MatchingDB"
+gateway --> authsvc : /auth/**
+gateway --> clientsvc : /clients/**
+gateway --> walletsvc : /wallet/**
+gateway --> ordersvc : /orders/**
 
-queue "RabbitMQ"
+' Inter-service communication
+ordersvc --> gateway : OpenFeign calls
+clientsvc --> gateway : Auth validation
 
-[React UI] --> [Spring Gateway] : HTTP requests
-[Spring Gateway] --> [AuthController] : /auth/**
-[Spring Gateway] --> [ClientController] : /clients/**
-[Spring Gateway] --> [WalletController] : /wallet/**
-[Spring Gateway] --> [OrderController] : /orders/**
+' Message queue flow
+ordersvc --> mq : Publish orders
+mq --> matchingsvc : Consume orders
+matchingsvc --> mq : Publish trades
+mq --> ordersvc : Consume trades
 
-[AuthController] --> [AuthService]
-[AuthService] --> [UserRepo]
-[UserRepo] --> [AuthDB]
+' WebSocket flow
+ordersvc --> ws : Real-time updates
+ws ..> reactui : Notifications
 
-[ClientController] --> [ClientService]
-[ClientService] --> [ClientRepo]
-[ClientRepo] --> [ClientDB]
+' Data persistence
+authsvc --> dataaccess
+clientsvc --> dataaccess
+walletsvc --> dataaccess
+ordersvc --> dataaccess
+matchingsvc --> dataaccess
 
-[WalletController] --> [WalletService]
-[WalletService] --> [WalletRepo]
-[WalletRepo] --> [WalletDB]
+dataaccess --> authdb
+dataaccess --> clientdb
+dataaccess --> walletdb
+dataaccess --> orderdb
+dataaccess --> matchingdb
 
-[OrderController] --> [OrderService]
-[OrderService] --> [OrderRepo]
-[OrderRepo] --> [OrderDB]
-[OrderService] --> [RabbitMQ]
+note right of ordersvc
+**SAGA Orchestrator**
+- Distributed transactions
+- Compensation logic
+- Service coordination
+end note
 
-[RabbitMQ] --> [MatchingService]
-[MatchingService] --> [MatchingRepo]
-[MatchingRepo] --> [MatchingDB]
+note bottom of mq
+**Asynchronous Communication**
+- Event-driven architecture
+- Loose coupling
+- Scalable messaging
+end note
+
+note left of ws
+**Real-time Updates**
+- SockJS fallback
+- User-specific channels
+- Order notifications
+end note
 
 @enduml

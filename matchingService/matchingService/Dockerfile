@@ -1,5 +1,5 @@
 # Utiliser une approche simple avec compilation locale
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk-jammy
 
 # Définir le répertoire de travail
 WORKDIR /app
