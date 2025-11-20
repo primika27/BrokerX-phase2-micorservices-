@@ -5,6 +5,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.broker.orderService.Application.OrderService;
 import com.broker.orderService.domain.Order;
 import com.broker.orderService.domain.OrderStatus;
 import com.broker.orderService.dto.OrderDto;
@@ -35,6 +36,9 @@ public class OrderSagaOrchestrator {
     
     @Autowired
     private ClientServiceClient clientServiceClient;
+    
+    @Autowired
+    private OrderService orderService;
 
     /**
      * Saga pour l'annulation d'un ordre
@@ -101,6 +105,16 @@ public class OrderSagaOrchestrator {
                 result.addStep("WebSocket notification sent to client");
             } catch (Exception e) {
                 System.err.println("Failed to send WebSocket notification: " + e.getMessage());
+                // Non-critical, don't fail the saga
+            }
+            
+            // Step 6: Send email notification for cancelled order
+            try {
+                orderService.sendOrderStatusEmailByClientId(order.getClientId(), order, "CANCELLED", 
+                    "Your order has been successfully cancelled.");
+                result.addStep("Email notification sent to client");
+            } catch (Exception e) {
+                System.err.println("Failed to send email notification: " + e.getMessage());
                 // Non-critical, don't fail the saga
             }
             
@@ -206,6 +220,18 @@ public class OrderSagaOrchestrator {
             } catch (Exception e) {
                 System.err.println("Failed to send WebSocket notification: " + e.getMessage());
                 // Non-critical, don't fail the saga
+            }
+            
+            // Step 7: Send email notification for modified order
+            try {
+                String modificationDetails = String.format("Your order has been successfully modified. New price: $%.2f, New quantity: %d", 
+                    order.getPrice(), order.getQuantity());
+                orderService.sendOrderStatusEmailByClientId(order.getClientId(), order, "MODIFIED", 
+                    modificationDetails);
+                result.addStep("Email notification sent to client");
+            } catch (Exception e) {
+                System.err.println("Failed to send email notification: " + e.getMessage());
+                
             }
             
             result.setSuccess(true);

@@ -1,5 +1,6 @@
 package com.broker.orderService.service;
 
+import com.broker.orderService.Application.OrderService;
 import com.broker.orderService.config.RabbitMQConfig;
 import com.broker.orderService.dto.OrderUpdateMessage;
 import com.broker.orderService.dto.Trade;
@@ -27,6 +28,9 @@ public class MatchingConsumer {
     
     @Autowired
     private WalletServiceClient walletServiceClient;
+    
+    @Autowired
+    private OrderService orderService;
 
     public MatchingConsumer(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
@@ -77,7 +81,11 @@ public class MatchingConsumer {
                     // Continue anyway - order is still filled
                 }
                 
-                // 3. Broadcast WebSocket notification to client
+                // 3. Send email notification for FILLED order
+                orderService.sendOrderStatusEmail(buyerEmail, updatedBuyOrder, "FILLED", 
+                    "Your buy order has been successfully matched and filled!");
+                
+                // 4. Broadcast WebSocket notification to client
                 broadcastOrderUpdate(updatedBuyOrder, "PENDING", "Order matched and filled");
             }
         }
@@ -106,7 +114,11 @@ public class MatchingConsumer {
                     // Continue anyway - order is still filled
                 }
                 
-                // 3. Broadcast WebSocket notification to client
+                // 3. Send email notification for FILLED order
+                orderService.sendOrderStatusEmail(sellerEmail, sellOrder, "FILLED", 
+                    "Your sell order has been successfully matched and filled!");
+                
+                // 4. Broadcast WebSocket notification to client
                 broadcastOrderUpdate(sellOrder, "PENDING", "Order matched and filled");
             }
         }

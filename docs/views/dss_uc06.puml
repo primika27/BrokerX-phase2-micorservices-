@@ -1,0 +1,23 @@
+@startuml dss_uc06
+title DSS - UC06: Modification/Annulation d'un ordre
+
+actor ":Client" as Client
+participant ":Système" as System
+
+== Modification d'ordre d'achat ==
+Client -> System : modifierOrdre(String numeroOrdre, String symbol,  double price, int quantity)
+alt Ordre modifiable et valide
+    System --> Client : message confirmation : "ordre modifié avec succès", numéroOrdre, statutOrdre
+else Ordre non modifiable ou invalide
+    System --> Client : message erreur : "ordre non modifiable" ou "ordre invalide"
+end
+
+== Annulation d'ordre ==
+Client -> System : annulerOrdre(String numeroOrdre)
+alt Ordre annulable et valide
+    System --> Client : message confirmation : "ordre annulé avec succès", numéroOrdre, statutOrdre
+else Ordre non annulable ou invalide
+    System --> Client : message erreur : "ordre non annulable" ou "ordre invalide"
+end
+
+@enduml
