@@ -199,57 +199,62 @@ export default function Dashboard() {
   return (
     <>
       <Navigation />
-      <main className="container">
-        <header style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <h1 style={{ margin: 0 }}>Dashboard</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={() => loadFinancialData()} style={{ padding: "8px 16px", fontSize: "14px" }}>
-            Manual Refresh
+      <main className="dashboard-page">
+        <div className="dashboard-header">
+          <div className="dashboard-title">
+            <h1>Dashboard</h1>
+          </div>
+          <button onClick={() => loadFinancialData()} className="refresh-button">
+            REFRESH
           </button>
         </div>
-      </header>
 
-      {loading && <p>Loading…</p>}
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
+        {loading && <p style={{ textAlign: 'center', color: '#6c757d' }}>Loading…</p>}
+        {err && <p style={{ color: '#e74c3c', textAlign: 'center', padding: '15px', background: '#f8d7da', borderRadius: '8px' }}>{err}</p>}
 
-      {me && (
-        <section style={{ marginTop: 16 }}>
-          <h2 style={{ marginBottom: 8 }}>Welcome, {me.name || 'User'}!</h2>
-        </section>
-      )}
-
-      <section style={{ marginTop: 24 }}>
-        <h3>Account Balance</h3>
-        <div style={{ padding: "16px", border: "1px solid #ccc", borderRadius: "8px" }}>
-          <p style={{ fontSize: "24px", margin: 0, fontWeight: "bold" }}>
-            ${typeof balance === 'number' ? balance.toFixed(2) : '0.00'} CAD
-          </p>
-        </div>
-      </section>
-
-      <section style={{ marginTop: 24 }}>
-        <h3>Holdings</h3>
-        <div style={{ padding: "16px", border: "1px solid #ccc", borderRadius: "8px" }}>
-          {holdings && holdings.totalPositions > 0 ? (
-            <div>
-              {Object.entries(holdings.holdings).map(([symbol, quantity]) => (
-                <div key={symbol} style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <span>{symbol}</span>
-                  <span>{quantity} shares</span>
-                </div>
-              ))}
+        {me && (
+          <div className="dashboard-card" style={{ marginBottom: '25px' }}>
+            <div className="card-header">
+              <h3>Welcome, {me.name || 'User'}!</h3>
             </div>
-          ) : (
-            <p style={{ opacity: 0.7 }}>No holdings available</p>
-          )}
+          </div>
+        )}
+
+        <div className="dashboard-grid">
+          <div className="dashboard-card">
+            <div className="card-header">
+              <span className="card-icon">$</span>
+              <h3>Account Balance</h3>
+            </div>
+            <p className="balance-amount">
+              ${typeof balance === 'number' ? balance.toFixed(2) : '0.00'} CAD
+            </p>
+          </div>
+
+          <div className="dashboard-card">
+            <div className="card-header">
+              <span className="card-icon">PORTFOLIO</span>
+              <h3>Holdings</h3>
+            </div>
+            {holdings && holdings.totalPositions > 0 ? (
+              <div className="holdings-list">
+                {Object.entries(holdings.holdings).map(([symbol, quantity]) => (
+                  <div key={symbol} className="holding-item">
+                    <span className="holding-symbol">{symbol}</span>
+                    <span className="holding-quantity">{quantity} shares</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="no-holdings">No holdings available</p>
+            )}
+          </div>
         </div>
-      </section>
 
-
-
-      <section style={{ marginTop: 24 }}>
-        <h3>Recent Orders</h3>
-        <div style={{ padding: "16px", border: "1px solid #ccc", borderRadius: "8px" }}>
+        <div className="orders-section">
+          <div className="orders-header">
+            <h3>Recent Orders</h3>
+          </div>
           {orderStatus && orderStatus.totalOrders > 0 ? (
             <div>
               {orderStatus.orders.slice(0, 5).map((order) => {
@@ -339,26 +344,26 @@ export default function Dashboard() {
                       borderRadius: "4px",
                       border: "1px solid #ccc"
                     }}>
-                      <h4 style={{ marginTop: 0, marginBottom: "12px" }}>Modifier la commande #{order.orderId}</h4>
+                      <h4 style={{ marginTop: 0, marginBottom: "12px" }}>Modify Order #{order.orderId}</h4>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div>
-                          <label htmlFor={`newPrice-${order.orderId}`} style={{ display: "block", marginBottom: "4px" }}>Nouveau prix (optionnel):</label>
+                          <label htmlFor={`newPrice-${order.orderId}`} style={{ display: "block", marginBottom: "4px" }}>New Price (optional):</label>
                           <input 
                             id={`newPrice-${order.orderId}`}
                             type="number" 
                             step="0.01"
-                            placeholder={`Prix actuel: $${order.price.toFixed(2)}`}
+                            placeholder={`Current Price: $${order.price.toFixed(2)}`}
                             value={newPrice}
                             onChange={(e) => setNewPrice(e.target.value)}
                             style={{ width: "100%", padding: "8px" }}
                           />
                         </div>
                         <div>
-                          <label htmlFor={`newQuantity-${order.orderId}`} style={{ display: "block", marginBottom: "4px" }}>Nouvelle quantité (optionnel):</label>
+                          <label htmlFor={`newQuantity-${order.orderId}`} style={{ display: "block", marginBottom: "4px" }}>New Quantity (optional):</label>
                           <input 
                             id={`newQuantity-${order.orderId}`}
                             type="number" 
-                            placeholder={`Quantité actuelle: ${order.quantity}`}
+                            placeholder={`Current Quantity: ${order.quantity}`}
                             value={newQuantity}
                             onChange={(e) => setNewQuantity(e.target.value)}
                             style={{ width: "100%", padding: "8px" }}
@@ -376,7 +381,7 @@ export default function Dashboard() {
                               cursor: "pointer"
                             }}
                           >
-                            Confirmer
+                            Confirm
                           </button>
                           <button 
                             onClick={() => {
@@ -393,7 +398,7 @@ export default function Dashboard() {
                               cursor: "pointer"
                             }}
                           >
-                            Annuler
+                            Cancel
                           </button>
                         </div>
                       </div>
@@ -407,8 +412,7 @@ export default function Dashboard() {
             <p style={{ opacity: 0.7 }}>No recent orders</p>
           )}
         </div>
-      </section>
-    </main>
+      </main>
     </>
   );
 }

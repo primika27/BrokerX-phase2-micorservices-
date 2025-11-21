@@ -47,67 +47,63 @@ export default function VerifyOtp() {
   }
 
   return (
-    <main style={{ padding: "20px", maxWidth: "400px", margin: "0 auto" }}>
-      <h1>Verify OTP</h1>
-      <p style={{ marginBottom: "20px", color: "#666" }}>
-        Enter the 6-digit verification code sent to <strong>{email}</strong>
-      </p>
-      
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-        <div>
-          <input 
-            type="text"
-            value={otp} 
-            onChange={handleOtpChange} 
-            placeholder="Enter 6-digit OTP"
-            maxLength={6}
-            style={{ 
-              width: "100%", 
-              padding: "12px", 
-              fontSize: "18px",
-              textAlign: "center",
-              letterSpacing: "2px",
-              border: error ? "2px solid #dc3545" : "1px solid #ccc",
-              borderRadius: "4px",
-              backgroundColor: error ? "#fff5f5" : "white"
-            }}
-            disabled={loading}
-          />
+    <div className="auth-page">
+      <div className="auth-container auth-container-animated">
+        <div className="auth-header">
+          <div className="auth-logo">BrokerX</div>
+          <h1>Verify OTP</h1>
+          <p>Enter the verification code sent to your email</p>
         </div>
 
-        {error && (
-          <div style={{ 
-            color: "#dc3545", 
-            backgroundColor: "#f8d7da", 
-            border: "1px solid #f5c6cb",
-            borderRadius: "4px",
-            padding: "10px",
-            fontSize: "14px"
-          }}>
-            <strong>Error:</strong> {error}
+        <div className="otp-info">
+          <p>
+            We've sent a 6-digit verification code to <strong>{email}</strong>
+          </p>
+        </div>
+        
+        <form onSubmit={submit} className="auth-form">
+          <div className="auth-form-group">
+            <label htmlFor="otp">Verification Code</label>
+            <input 
+              id="otp"
+              type="text"
+              value={otp} 
+              onChange={handleOtpChange} 
+              placeholder="000000"
+              maxLength={6}
+              className={`auth-input otp-input ${error ? 'error' : ''}`}
+              disabled={loading}
+              autoComplete="one-time-code"
+            />
           </div>
-        )}
 
-        <button 
-          type="submit" 
-          disabled={loading || otp.length !== 6}
-          style={{ 
-            padding: "12px", 
-            backgroundColor: loading || otp.length !== 6 ? "#6c757d" : "#007bff", 
-            color: "white", 
-            border: "none", 
-            borderRadius: "4px", 
-            cursor: loading || otp.length !== 6 ? "not-allowed" : "pointer",
-            fontSize: "16px"
-          }}
-        >
-          {loading ? "Verifying..." : "Verify OTP"}
-        </button>
-      </form>
+          {error && (
+            <div className="auth-alert auth-alert-error">
+              <span className="auth-alert-icon">ERROR</span>
+              {error}
+            </div>
+          )}
 
-      <div style={{ marginTop: "20px", textAlign: "center", fontSize: "14px", color: "#666" }}>
-        <p>Didn't receive the code? Check your spam folder or try again.</p>
+          <button 
+            type="submit" 
+            disabled={loading || otp.length !== 6}
+            className={`auth-button ${loading ? 'loading' : ''}`}
+          >
+            {loading ? (
+              <>
+                <span className="auth-loading-spinner"></span>
+                {' '}Verifying...
+              </>
+            ) : (
+              "Verify Code"
+            )}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          <p>Didn't receive the code? Check your spam folder or contact support.</p>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

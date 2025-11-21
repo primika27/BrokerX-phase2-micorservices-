@@ -3,7 +3,6 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import type { Location } from "react-router-dom";
 import { useAuth } from "../lib/useAuth";
 import { apiPost } from "../lib/api";
-import Navigation from "../components/Navigation";
 
 type FromState = { from?: Location };
 type LoginResp = { status: "OK" | "MFA_REQUIRED" | "ERROR" | string; token?: string; message?: string };
@@ -55,82 +54,70 @@ export default function Login() {
   }
 
   return (
-    <>
-      <Navigation />
-      <main style={{ padding: "20px", maxWidth: "400px", margin: "0 auto" }}>
-        <h1>Welcome Back</h1>
-      <p style={{ marginBottom: "20px", color: "#666" }}>
-        Sign in to your BrokerX account
-      </p>
-      
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-        <div>
-          <input 
-            type="email"
-            value={email} 
-            onChange={(e) => setEmail(e.target.value)} 
-            placeholder="Email Address"
-            required
-            disabled={loading}
-            style={{ 
-              width: "100%", 
-              padding: "12px", 
-              border: "1px solid #ccc",
-              borderRadius: "4px"
-            }} 
-          />
+    <div className="auth-page">
+      <div className="auth-container auth-container-animated">
+        <div className="auth-header">
+          <div className="auth-logo">BrokerX</div>
+          <h1>Welcome Back</h1>
+          <p>Sign in to your BrokerX account to access professional trading tools</p>
         </div>
-        <div>
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            placeholder="Password"
-            required
-            disabled={loading}
-            style={{ 
-              width: "100%", 
-              padding: "12px", 
-              border: "1px solid #ccc",
-              borderRadius: "4px"
-            }} 
-          />
-        </div>
-
-        {error && (
-          <div style={{ 
-            color: "#dc3545", 
-            backgroundColor: "#f8d7da", 
-            border: "1px solid #f5c6cb",
-            borderRadius: "4px",
-            padding: "10px",
-            fontSize: "14px"
-          }}>
-            <strong>Error:</strong> {error}
+        
+        <form onSubmit={submit} className="auth-form">
+          <div className="auth-form-group">
+            <label htmlFor="email">Email Address</label>
+            <input 
+              id="email"
+              type="email"
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              placeholder="Enter your email address"
+              required
+              disabled={loading}
+              className="auth-input"
+            />
           </div>
-        )}
 
-        <button 
-          type="submit"
-          disabled={loading || !email || !password}           
-          style={{ 
-            padding: "12px", 
-            backgroundColor: loading || !email || !password ? "#6c757d" : "#28a745", 
-            color: "white", 
-            border: "none", 
-            borderRadius: "4px", 
-            cursor: loading || !email || !password ? "not-allowed" : "pointer",
-            fontSize: "16px"
-          }}
-        >
-          {loading ? "Signing In..." : "Sign In"}
-        </button>
-      </form>
+          <div className="auth-form-group">
+            <label htmlFor="password">Password</label>
+            <input 
+              id="password"
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              placeholder="Enter your password"
+              required
+              disabled={loading}
+              className="auth-input"
+            />
+          </div>
 
-      <div style={{ marginTop: "20px", textAlign: "center", fontSize: "14px", color: "#666" }}>
-        <p>Don't have an account? <Link to="/register" style={{ color: "#007bff" }}>Create one here</Link></p>
+          {error && (
+            <div className="auth-alert auth-alert-error">
+              <span className="auth-alert-icon">ERROR</span>
+              {error}
+            </div>
+          )}
+
+          <button 
+            type="submit"
+            disabled={loading || !email || !password}           
+            className={`auth-button ${loading ? 'loading' : ''}`}
+          >
+            {loading ? (
+              <>
+                <span className="auth-loading-spinner"></span>
+                {' '}Signing In...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          <p>Don't have an account? <Link to="/register">Create one here</Link></p>
+        </div>
       </div>
-    </main>
-    </>
+    </div>
   );
 }

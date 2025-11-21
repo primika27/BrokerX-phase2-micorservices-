@@ -74,7 +74,7 @@ export default function Deposit() {
       <main className="deposit-page">
         <div className="deposit-container">
           <div className="deposit-header">
-            <h1>💳 Deposit Funds</h1>
+            <h1>Deposit Funds</h1>
             <p>Add funds to your BrokerX account securely</p>
           </div>
 
@@ -107,14 +107,14 @@ export default function Deposit() {
 
               {error && (
                 <div className="alert alert-error">
-                  <span className="alert-icon">⚠️</span>
+                  <span className="alert-icon">ERROR</span>
                   {error}
                 </div>
               )}
 
               {success && (
                 <div className="alert alert-success">
-                  <span className="alert-icon">✅</span>
+                  <span className="alert-icon">SUCCESS</span>
                   {success}
                 </div>
               )}
@@ -131,7 +131,7 @@ export default function Deposit() {
                   </>
                 ) : (
                   <>
-                    <span className="button-icon">💰</span>
+                    <span className="button-icon">$</span>
                     {' '}Deposit Funds
                   </>
                 )}
@@ -139,7 +139,7 @@ export default function Deposit() {
             </form>
 
             <div className="security-info">
-              <h3>🔒 Security & Limits</h3>
+              <h3>Security & Limits</h3>
               <div className="limits-grid">
                 <div className="limit-item">
                   <span className="limit-label">Minimum:</span>
@@ -161,15 +161,15 @@ export default function Deposit() {
               
               <div className="security-features">
                 <div className="feature">
-                  <span className="feature-icon">🛡️</span>
+                  <span className="feature-icon">SECURE</span>
                   <span>All transactions are encrypted</span>
                 </div>
                 <div className="feature">
-                  <span className="feature-icon">🔍</span>
+                  <span className="feature-icon">MONITOR</span>
                   <span>Fraud detection monitoring</span>
                 </div>
                 <div className="feature">
-                  <span className="feature-icon">⚡</span>
+                  <span className="feature-icon">INSTANT</span>
                   <span>Instant fund availability</span>
                 </div>
               </div>
