@@ -10,7 +10,8 @@ COPY mvnw .
 COPY .mvn .mvn
 
 # Rendre le script mvnw exécutable, télécharger les dépendances et installer curl
-RUN apk add --no-cache curl && \
+RUN apk add --no-cache curl dos2unix && \
+    dos2unix ./mvnw && \
     chmod +x ./mvnw && \
     ./mvnw dependency:go-offline -B
 

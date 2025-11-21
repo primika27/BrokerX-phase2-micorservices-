@@ -88,7 +88,13 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
   };
 
   const formatTime = (timestamp: string): string => {
-    return new Date(timestamp).toLocaleTimeString('fr-FR');
+    return new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    });
   };
 
   const getConnectionStatusDisplay = () => {
@@ -107,19 +113,10 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
     return (
       <div className="market-quotes">
         <div className="header">
-          <h2> Données de Marché BrokerX</h2>
           <div className="connection-status status-error"> Erreur</div>
         </div>
         <div className="error-message">
            {error}
-        </div>
-        <div className="help-text">
-          <p>Vérifiez que :</p>
-          <ul>
-            <li>Le service MarketData est démarré (port 8086)</li>
-            <li>Le Gateway est démarré (port 8080)</li>
-            <li>Vous êtes bien authentifié</li>
-          </ul>
         </div>
       </div>
     );
@@ -144,7 +141,7 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
             return (
               <div key={symbol} className="quote-card loading">
                 <h3>{symbol}</h3>
-                <div className="loading-text">⏳ Chargement...</div>
+                <div className="loading-text">⏳ Loading...</div>
               </div>
             );
           }
@@ -162,20 +159,22 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
               
               <div className="price-section">
                 <div className="last-price">
-                  ${formatPrice(quote.last)}
+                  <span className="label">Last Price:</span>
+                  <span className="value">${formatPrice(quote.last)}</span>
                 </div>
                 <div className={`change-section ${changeClass}`}>
-                  {changeSymbol}{formatPrice(quote.change)} ({changeSymbol}{quote.changePercent.toFixed(2)}%)
+                  <span className="label">Change:</span>
+                  <span className="value">{changeSymbol}{formatPrice(quote.change)} ({changeSymbol}{quote.changePercent.toFixed(2)}%)</span>
                 </div>
               </div>
               
               <div className="bid-ask-section">
                 <div className="bid">
-                  <span className="label">Achat:</span>
+                  <span className="label">Bid:</span>
                   <span className="value">${formatPrice(quote.bid)}</span>
                 </div>
                 <div className="ask">
-                  <span className="label">Vente:</span>
+                  <span className="label">Ask:</span>
                   <span className="value">${formatPrice(quote.ask)}</span>
                 </div>
               </div>

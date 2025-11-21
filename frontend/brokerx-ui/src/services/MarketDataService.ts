@@ -50,13 +50,14 @@ class MarketDataService {
     }
 
     return new Promise((resolve, reject) => {
-      // Test: connexion directe au service MarketData (contourne le Gateway temporairement)
-      const socket = new SockJS('http://localhost:8086/ws/market-data');
+      // Send JWT token as URL parameter (required by handshake interceptor)
+      const socket = new SockJS(`http://localhost:8086/ws/market-data?token=${token}`);
+      console.log('Creating SockJS connection to MarketData service with token:', token.substring(0, 20) + '...');
       
       this.client = new Client({
         webSocketFactory: () => socket,
-        connectHeaders: {
-          'Authorization': `Bearer ${token}`, // JWT token
+        debug: (str) => {
+          console.log('[MarketData STOMP Debug]:', str);
         },
         onConnect: (frame) => {
           console.log('Connecté au MarketData WebSocket:', frame.command);
@@ -65,8 +66,10 @@ class MarketDataService {
         },
         onStompError: (frame) => {
           console.error('Erreur WebSocket STOMP:', frame);
+          console.error('STOMP Error Headers:', frame.headers);
+          console.error('STOMP Error Body:', frame.body);
           this.isConnected = false;
-          reject(new Error(`Erreur STOMP: ${frame.headers['message'] || 'Erreur inconnue'}`));
+          reject(new Error(`Erreur STOMP: ${frame.headers['message'] || frame.body || 'Erreur inconnue'}`));
         },
         onDisconnect: (frame) => {
           console.log('WebSocket déconnecté:', frame);
@@ -74,7 +77,9 @@ class MarketDataService {
         },
         onWebSocketError: (error) => {
           console.error('Erreur WebSocket:', error);
-          reject(new Error('Erreur de connexion WebSocket'));
+          console.error('WebSocket Error Type:', typeof error);
+          console.error('WebSocket Error Details:', error);
+          reject(new Error('Erreur de connexion WebSocket: ' + (error?.message || error)));
         }
       });
 

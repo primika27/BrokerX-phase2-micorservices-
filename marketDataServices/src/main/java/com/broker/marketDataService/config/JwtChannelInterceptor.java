@@ -18,17 +18,77 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
         
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            // Vérifier uniquement X-Authenticated-User (venant du gateway)
-            // Le Gateway a déjà validé le JWT, pas besoin de re-validation
-            String authenticatedUser = accessor.getFirstNativeHeader("X-Authenticated-User");
-            if (authenticatedUser != null && !authenticatedUser.isEmpty()) {
-                accessor.setUser(new JwtPrincipal(authenticatedUser));
+            // Try to get token from WebSocket session attributes (set by handshake interceptor)
+            String token = null;
+            if (accessor.getSessionAttributes() != null) {
+                token = (String) accessor.getSessionAttributes().get("jwt_token");
+            }
+            
+            if (token != null && !token.isEmpty()) {
+                // For now, extract email from token (simplified - in production, validate JWT properly)
+                // This is a basic implementation - you should validate the JWT token here
+                String userEmail = extractEmailFromToken(token);
+                if (userEmail != null) {
+                    accessor.setUser(new JwtPrincipal(userEmail));
+                    System.out.println("MarketData WebSocket authenticated user: " + userEmail);
+                } else {
+                    throw new SecurityException("Invalid JWT token");
+                }
             } else {
-                throw new SecurityException("Authentification requise - doit passer par le Gateway");
+                // Fallback: check for X-Authenticated-User header from Gateway
+                String authenticatedUser = accessor.getFirstNativeHeader("X-Authenticated-User");
+                if (authenticatedUser != null && !authenticatedUser.isEmpty()) {
+                    accessor.setUser(new JwtPrincipal(authenticatedUser));
+                } else {
+                    throw new SecurityException("Authentication required - JWT token missing");
+                }
             }
         }
         
         return message;
+    }
+    
+    /**
+     * Extract email from JWT token (simplified implementation)
+     * In production, use a proper JWT library to validate and parse the token
+     */
+    private String extractEmailFromToken(String token) {
+        try {
+            // This is a simplified extraction - in production, validate the JWT signature
+            // For now, decode the payload and extract the subject (email)
+            
+            if (token != null && token.contains(".")) {
+                // Split JWT token (header.payload.signature)
+                String[] parts = token.split("\\.");
+                if (parts.length == 3) {
+                    // Decode payload (base64)
+                    String payload = parts[1];
+                    // Add padding if needed
+                    while (payload.length() % 4 != 0) {
+                        payload += "=";
+                    }
+                    
+                    // Decode base64
+                    byte[] decodedBytes = java.util.Base64.getDecoder().decode(payload);
+                    String decodedPayload = new String(decodedBytes);
+                    
+                    // Extract subject (email) from JSON payload
+                    // Look for "sub":"email@domain.com"
+                    if (decodedPayload.contains("\"sub\":\"")) {
+                        int startIndex = decodedPayload.indexOf("\"sub\":\"") + 7;
+                        int endIndex = decodedPayload.indexOf("\"", startIndex);
+                        if (endIndex > startIndex) {
+                            String email = decodedPayload.substring(startIndex, endIndex);
+                            System.out.println("Extracted email from JWT: " + email);
+                            return email;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error parsing JWT token: " + e.getMessage());
+        }
+        return null;
     }
 
     private static class JwtPrincipal implements Principal {

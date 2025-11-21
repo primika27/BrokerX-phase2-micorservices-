@@ -81,17 +81,24 @@ public class MarketDataWebSocketController {
     }
     
     /**
-     * Extrait l'email de l'utilisateur à partir du header X-Authenticated-User
-     * ajouté par l'API Gateway après validation JWT
+     * Extrait l'email de l'utilisateur à partir du principal Spring Security
+     * défini par le JwtChannelInterceptor
      */
     private String extractUserEmailFromHeaders(SimpMessageHeaderAccessor headerAccessor) {
-        // Le Gateway a déjà validé le JWT et ajouté l'email utilisateur
-        String authenticatedUser = (String) headerAccessor.getFirstNativeHeader("X-Authenticated-User");
-        if (authenticatedUser != null && !authenticatedUser.isEmpty()) {
-            return authenticatedUser;
+        // First try to get user from Spring Security principal (set by JwtChannelInterceptor)
+        if (headerAccessor != null && headerAccessor.getUser() != null) {
+            return headerAccessor.getUser().getName();
         }
         
-        System.err.println("Header X-Authenticated-User manquant - requête non authentifiée par le Gateway");
+        // Fallback: check for X-Authenticated-User header from Gateway
+        if (headerAccessor != null) {
+            String authenticatedUser = headerAccessor.getFirstNativeHeader("X-Authenticated-User");
+            if (authenticatedUser != null && !authenticatedUser.isEmpty()) {
+                return authenticatedUser;
+            }
+        }
+        
+        System.err.println("No authenticated user found - neither principal nor header present");
         return null;
     }
 }
