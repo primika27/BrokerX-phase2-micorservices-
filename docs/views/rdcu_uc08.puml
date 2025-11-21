@@ -1,0 +1,67 @@
+@startuml rdcu_uc08
+
+title Réalisation UC-08.1: Email de confirmation d'exécution d'ordre
+
+actor "Client" as client
+participant ":MatchingConsumer" as consumer
+participant ":ClientServiceClient" as clientService
+participant ":WalletServiceClient" as walletService  
+participant ":OrderService" as service
+participant ":JavaMailSender" as mailer
+participant ":OrderRepository" as repo
+participant "order:Order" as order
+
+note over consumer : Après matching d'une transaction
+
+consumer -> clientService : getEmailById("ORDER_SERVICE", buyOrder.getClientId())
+activate clientService
+note right of clientService
+    @FeignClient(url="http://gateway:8080")
+    Mapping: /api/clients/getEmailById
+end note
+clientService --> consumer : ResponseEntity<String>
+deactivate clientService
+
+consumer -> walletService : walletTransaction(buyerEmail, buyerEmail, debitAmount, "DEBIT")
+activate walletService
+note right of walletService
+    @FeignClient(url="http://gateway:8080")
+    Mapping: /api/wallet/transaction
+end note
+walletService --> consumer : ResponseEntity<String>
+deactivate walletService
+
+consumer -> order : setStatus(FILLED)
+activate order
+deactivate order
+
+consumer -> repo : save(order)
+activate repo
+repo --> consumer : updatedOrder
+deactivate repo
+
+consumer -> service : sendOrderStatusEmail(buyerEmail, updatedOrder, "FILLED", "Your order has been successfully matched and filled!")
+activate service
+
+service -> mailer : createMimeMessage()
+activate mailer
+mailer --> service : mimeMessage
+deactivate mailer
+
+service -> service : prepareMessage(mimeMessage, clientEmail, subject, htmlBody)
+activate service
+note right : Construire le sujet et le corps HTML\navec détails de l'ordre exécuté
+deactivate service
+
+service -> mailer : send(mimeMessage)
+activate mailer
+note right : Envoi email de confirmation\navec détails de l'exécution
+mailer --> client : Email de confirmation
+deactivate mailer
+
+service --> consumer : confirmation envoi
+deactivate service
+
+note over client : Reçoit notification email\nde l'exécution de son ordre
+
+@enduml

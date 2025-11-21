@@ -1,180 +1,56 @@
 @startuml rdcu_uc06_modify
-title RDCU - UC06: Modification d'un ordre existant (Order Service Architecture)
+title RDCU - UC06: Modification d'un ordre existant
 
-' Participants - Real Architecture
-participant ":OrderController" as Controller <<Infrastructure>>
-participant ":OrderSagaOrchestrator" as Saga <<Application>>
-participant ":OrderRepository" as OrderRepo <<Infrastructure>>
-participant "order:Order" as Order <<Domain>>
-participant ":WalletServiceClient" as WalletClient <<Infrastructure>>
-participant ":ClientServiceClient" as ClientClient <<Infrastructure>>
-participant ":OrderMessageProducer" as Producer <<Infrastructure>>
-participant "sagaResult:SagaResult" as Result <<Domain>>
-participant ":SimpMessagingTemplate" as WebSocket <<Infrastructure>>
+participant ":OrderController" as Controller
+participant ":OrderSagaOrchestrator" as Saga
+participant ":OrderRepository" as OrderRepo
+participant "order:Order" as Order
+participant ":WalletServiceClient" as WalletClient
+participant ":ClientServiceClient" as ClientClient
+participant ":OrderMessageProducer" as Producer
 
-' Sequence - Actual Implementation
-Controller -> Controller : modifyOrder(orderId, clientEmail, newPrice, newQuantity)
-activate Controller
-
-note right of Controller : **@PutMapping("/{orderId}")**\n**Real REST endpoint**
-
-' Direct call to SAGA (no OrderService intermediary)
-Controller -> Saga : modifyOrderSaga(orderId, clientEmail, newPrice, newQuantity)
+Controller -> Saga : modifyOrderSaga(orderId, email, newPrice, newQuantity)
 activate Saga
 
-' Step 1: Validate order exists and is PENDING
-note right of Saga : **Step 1: Validate Order**
-Saga -> OrderRepo : findById(orderId)
-activate OrderRepo
-OrderRepo --> Saga : Optional<Order>
-deactivate OrderRepo
+Saga -> OrderRepo : findByOrderId(orderId)
+OrderRepo --> Saga : order
 
-Saga -> Order : getStatus()
-Order --> Saga : OrderStatus.PENDING
-
-Saga -> ClientClient : getByEmail(clientEmail, clientEmail)
-activate ClientClient
-ClientClient --> Saga : ResponseEntity<Integer>
-deactivate ClientClient
-
-Saga -> Order : getClientId()
-Order --> Saga : clientId
-
-alt clientId doesn't match
-    Saga --> Controller : SagaResult(false, "Unauthorized")
-    note right : Rollback - Exit early
+alt order not found or not PENDING
+    Saga --> Controller : SagaResult(false, "Order cannot be modified")
 end
 
-' Step 2: Calculate wallet adjustment
-note right of Saga : **Step 2: Calculate Wallet Adjustment**
-Saga -> Order : getPrice()
-Order --> Saga : oldPrice
-Saga -> Order : getQuantity()
-Order --> Saga : oldQuantity
-Saga -> Order : getOrderType()
-Order --> Saga : orderType
+Saga -> Saga : calculateNewTotal(newPrice, newQuantity, order)
 
-note right of Saga : Calculate difference:\noldCost = oldPrice * oldQuantity\nnewCost = newPrice * newQuantity\nadjustment = newCost - oldCost
-
-' Step 3: Adjust wallet balance
-note right of Saga : **Step 3: Adjust Wallet Balance**
-alt adjustment > 0 (more funds needed)
-    Saga -> WalletClient : getBalance(clientEmail, clientEmail)
+alt orderType == "BUY"
+    Saga -> WalletClient : getBalance(email, email)
     activate WalletClient
+    note right of WalletClient
+        @FeignClient(url="http://gateway:8080")
+        Mapping:/api/wallet/balance
+    end note
     WalletClient --> Saga : ResponseEntity<Double>
     deactivate WalletClient
     
-    alt insufficient balance
+    alt insufficient balance for new total
         Saga --> Controller : SagaResult(false, "Insufficient funds")
-        note right : Rollback - Exit early
     end
-    
-    Saga -> WalletClient : walletTransaction(clientEmail, clientEmail, adjustment, "DEBIT")
-    activate WalletClient
-    WalletClient --> Saga : ResponseEntity<String>
-    deactivate WalletClient
-else adjustment < 0 (refund needed)
-    Saga -> WalletClient : walletTransaction(clientEmail, clientEmail, -adjustment, "CREDIT")
-    activate WalletClient
-    WalletClient --> Saga : ResponseEntity<String>
-    deactivate WalletClient
+else orderType == "SELL"
+    note right of Saga : No balance check needed for SELL orders
 end
 
-' Step 4: Update order
-note right of Saga : **Step 4: Update Order**
-opt newPrice provided
-    Saga -> Order : setPrice(newPrice)
-end
-opt newQuantity provided
-    Saga -> Order : setQuantity(newQuantity)
-end
-
+Saga -> Order : setPrice(newPrice)
+Saga -> Order : setQuantity(newQuantity)
 Saga -> OrderRepo : save(order)
-activate OrderRepo
-OrderRepo --> Saga : Order
-deactivate OrderRepo
 
-' Step 5: Notify matching service
-note right of Saga : **Step 5: Notify Matching Service**
-Saga -> Order : getOrderId()
-Order --> Saga : orderId
-Saga -> Order : getSymbol()
-Order --> Saga : symbol
-Saga -> Order : getPrice()
-Order --> Saga : newPrice
-Saga -> Order : getQuantity()
-Order --> Saga : newQuantity
-Saga -> Order : getOrderType()
-Order --> Saga : orderType
-
-create participant "orderDto:OrderDto" as OrderDto <<DTO>>
+create participant "orderDto:OrderDto" as OrderDto
 Saga -> OrderDto : new OrderDto()
-Saga -> OrderDto : setOrderId(String.valueOf(orderId))
-Saga -> OrderDto : setStockSymbol(symbol)
-Saga -> OrderDto : setPrice(newPrice)
-Saga -> OrderDto : setQuantity(newQuantity)
-Saga -> OrderDto : setOrderType(orderType)
+Saga -> OrderDto : setStatus("MODIFIED")
 
 Saga -> Producer : sendModifiedOrderToMatchingService(orderDto)
-activate Producer
-Producer --> Saga : void
-deactivate Producer
 
-' Step 6: Notify UI via WebSocket
-note right of Saga : **Step 6: Notify UI via WebSocket**
-Saga -> ClientClient : getEmailById(clientId, clientEmail)
-activate ClientClient
-ClientClient --> Saga : ResponseEntity<String>
-deactivate ClientClient
-
-create participant "updateMsg:OrderUpdateMessage" as UpdateMsg <<DTO>>
-Saga -> UpdateMsg : new OrderUpdateMessage()
-Saga -> UpdateMsg : setOrderId(orderId)
-Saga -> UpdateMsg : setStatus(OrderStatus.PENDING)
-Saga -> UpdateMsg : setMessage("Order modified successfully")
-
-Saga -> WebSocket : convertAndSendToUser(userEmail, "/topic/order-updates", updateMsg)
-activate WebSocket
-WebSocket --> Saga : void
-deactivate WebSocket
-
-' Step 7: Create successful result
-note right of Saga : **Step 7: Return Success**
-create Result
-Saga -> Result : new SagaResult(true)
-Saga -> Result : setMessage("Order modified successfully")
-Saga -> Result : addExecutedStep("Validated order ownership")
-Saga -> Result : addExecutedStep("Adjusted wallet balance")
-Saga -> Result : addExecutedStep("Updated order details")
-Saga -> Result : addExecutedStep("Notified matching service")
-Saga -> Result : addExecutedStep("Sent WebSocket notification")
-
-Saga --> Controller : sagaResult
+Saga --> Controller : SagaResult(true)
 deactivate Saga
 
-Controller --> "Frontend" : ResponseEntity.ok(response)
-
-note right of Controller
-  **ACTUAL ARCHITECTURE:**
-  
-  OrderController (REST endpoints):
-  - @Autowired OrderSagaOrchestrator
-  - PUT /api/orders/{orderId} → modifyOrder()
-  - Direct delegation to SAGA orchestrator
-  
-  SAGA Pattern Benefits:
-  - Distributed transaction coordination
-  - Automatic rollback (@Transactional)
-  - Multi-service orchestration
-  - Clear compensation logic
-  
-  **GRASP Patterns Applied:**
-  - Controller: OrderController handles HTTP concerns
-  - Information Expert: Order knows its own data
-  - Creator: Saga creates DTOs and results
-  - Low Coupling: Feign clients abstract service calls
-  - High Cohesion: Each class has focused responsibility
-  - Pure Fabrication: Saga coordinates distributed operations
-end note
+@enduml
 
 @enduml

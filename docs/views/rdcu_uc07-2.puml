@@ -1,0 +1,45 @@
+@startuml rdcu_uc07_matching_canceled
+title RDCU - UC07: Appariement - Annulation d'ordre en attente
+
+participant ":RabbitMQConsumer" as Consumer
+participant ":OrderMatchingService" as OrderMatching
+participant ":MatchingOrderRepository" as MatchingRepo
+participant "existingOrder:MatchingOrder" as ExistingOrder
+participant ":ConcurrentHashMap<String,ScheduledFuture<?>>" as ScheduledTrades
+
+Consumer -> Consumer : receiveOrder(OrderDto with status="CANCELLED")
+activate Consumer
+
+Consumer -> OrderMatching : cancelOrder(orderId)
+activate OrderMatching
+
+OrderMatching -> MatchingRepo : findByOrderId(orderId)
+MatchingRepo --> OrderMatching : existingOrder
+
+alt order not found
+    OrderMatching --> Consumer : log("Order not found")
+else order not PENDING
+    OrderMatching --> Consumer : log("Order cannot be cancelled")
+else order is PENDING
+    OrderMatching -> ExistingOrder : setStatus("CANCELLED")
+    OrderMatching -> MatchingRepo : save(existingOrder)
+    
+    OrderMatching -> ScheduledTrades : remove(orderId)
+    ScheduledTrades --> OrderMatching : scheduledTrade
+    
+    alt scheduledTrade exists and not done
+        OrderMatching -> ScheduledTrades : scheduledTrade.cancel(false)
+        note right of OrderMatching
+            Cancels any pending
+            trade execution for this order
+        end note
+    end
+    
+    OrderMatching --> Consumer : log("Order cancelled in matching engine")
+end
+
+OrderMatching --> Consumer : void
+deactivate OrderMatching
+deactivate Consumer
+
+@enduml

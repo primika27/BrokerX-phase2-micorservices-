@@ -1,0 +1,55 @@
+@startuml rdcu_uc07_matching_filled
+title RDCU - UC07: Appariement d'ordre jusqu'à exécution
+
+participant ":RabbitMQConsumer" as Consumer
+participant ":OrderMatchingService" as OrderMatching
+participant ":MatchingOrderRepository" as MatchingRepo
+participant "newOrder:MatchingOrder" as NewOrder
+participant "counterOrder:MatchingOrder" as CounterOrder
+participant ":RabbitTemplate" as RabbitMQ
+
+Consumer -> Consumer : receiveOrder(OrderDto)
+activate Consumer
+
+Consumer -> OrderMatching : processNewOrder(orderDto)
+activate OrderMatching
+
+create NewOrder
+OrderMatching -> NewOrder : new MatchingOrder(orderDto)
+OrderMatching -> MatchingRepo : save(newOrder)
+
+OrderMatching -> MatchingRepo : findByStockSymbolAndOrderTypeAndStatusOrderByPrice(symbol, counterType, "PENDING")
+MatchingRepo --> OrderMatching : potentialMatches
+
+alt no counter-order found
+    OrderMatching -> OrderMatching : createSyntheticCounterOrder(newOrder)
+    OrderMatching --> CounterOrder : marketMakerOrder
+    OrderMatching -> MatchingRepo : save(marketMakerOrder)
+end
+
+OrderMatching -> OrderMatching : executeTrade(newOrder, counterOrder, quantity)
+
+note right of OrderMatching : Schedules trade execution\nwith 10-second delay
+
+OrderMatching -> NewOrder : setStatus("FILLED")
+OrderMatching -> CounterOrder : setRemainingQuantity(remaining - quantity)
+OrderMatching -> MatchingRepo : save(newOrder)
+OrderMatching -> MatchingRepo : save(counterOrder)
+
+create participant "trade:Trade" as Trade
+OrderMatching -> Trade : new Trade(tradeId, buyOrderId, sellOrderId, symbol, quantity, price, timestamp)
+
+OrderMatching -> RabbitMQ : convertAndSend(RabbitMQConfig.MATCHING_QUEUE, trade)
+activate RabbitMQ
+note right of RabbitMQ
+    Publishes trade event to
+    OrderService for processing
+end note
+RabbitMQ --> OrderMatching : void
+deactivate RabbitMQ
+
+OrderMatching --> Consumer : void
+deactivate OrderMatching
+deactivate Consumer
+
+@enduml

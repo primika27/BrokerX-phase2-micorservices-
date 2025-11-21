@@ -1,0 +1,73 @@
+@startuml rdcu_uc08-2
+
+title Réalisation UC-08.2: Email de notification de changement de statut d'ordre
+
+actor "Client" as client
+participant ":OrderController" as controller
+participant ":OrderSagaOrchestrator" as saga
+participant ":ClientServiceClient" as clientService
+participant ":OrderService" as service
+participant ":JavaMailSender" as mailer
+participant ":OrderRepository" as repo
+participant "order:Order" as order
+
+note over controller : Suite à une opération\n(annulation, modification, etc.)
+
+controller -> saga : cancelOrderSaga(orderId, clientEmail)
+activate saga
+
+saga -> repo : findById(orderId)
+activate repo
+repo --> saga : order
+deactivate repo
+
+alt order not found or not PENDING
+    saga --> controller : SagaResult(false, "Order cannot be canceled")
+end
+
+saga -> order : setStatus(CANCELED)
+activate order
+deactivate order
+
+saga -> repo : save(order)
+activate repo
+repo --> saga : updatedOrder
+deactivate repo
+
+saga -> clientService : getEmailById("ORDER_SERVICE", order.getClientId())
+activate clientService
+note right of clientService
+    @FeignClient(url="http://gateway:8080")
+    Mapping: /api/clients/getEmailById
+end note
+clientService --> saga : ResponseEntity<String>
+deactivate clientService
+
+saga -> service : sendOrderStatusEmail(clientEmail, order, "CANCELED", "Your order has been canceled")
+activate service
+
+service -> mailer : createMimeMessage()
+activate mailer
+mailer --> service : mimeMessage
+deactivate mailer
+
+service -> service : prepareMessage(mimeMessage, clientEmail, subject, htmlBody)
+activate service
+note right : Construire le sujet et le corps HTML\navec nouveau statut de l'ordre
+deactivate service
+
+service -> mailer : send(mimeMessage)
+activate mailer
+note right : Envoi email de notification\nde changement de statut
+mailer --> client : Email de notification
+deactivate mailer
+
+service --> saga : confirmation envoi
+deactivate service
+
+saga --> controller : SagaResult(success)
+deactivate saga
+
+note over client : Reçoit notification email\ndu changement de statut
+
+@enduml
