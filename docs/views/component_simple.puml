@@ -1,83 +1,52 @@
-@startuml component_simple
-title BrokerX Component Diagram - Simplified Architecture
+@startuml component_final
+!theme plain
+title "BrokerX - Component Architecture"
 
-!define BUSINESS_COLOR #E8F4FD
-!define INFRASTRUCTURE_COLOR #FFF2CC
-!define DATA_COLOR #F8CECC
-
-package "Frontend Layer" as frontend_layer {
-  component "React UI" as reactui {
-    [WebSocket Client]
-    [API Service Layer]
-    [Auth Context]
-  }
+package "Frontend Layer" {
+  component "React Frontend" as reactui
 }
 
-package "API Gateway Layer" as gateway_layer {
-  component "Spring Cloud Gateway" as gateway {
-    [JWT Validator]
-    [Route Configuration]
-    [CORS Handler]
-  }
+package "Gateway Layer" {
+  component "API Gateway" as gateway
 }
 
-package "Business Services Layer" as business_layer {
+package "Microservices Layer" {
   
   component "Auth Service" as authsvc {
     [AuthController]
-    [AuthService + JWT + Email]
-    [UserCredentialRepository]
+    [AuthRepository]
+  }
+
+  component "Order Service" as ordersvc {
+    [OrderController]
+    [SagaOrchestrator]
+    [OrderRepository]
+  }
+
+  component "Matching Service" as matchingsvc {
+    [MatchingEngine]
+    [MatchingRepository]
   }
   
   component "Client Service" as clientsvc {
-    [ClientController]
-    [ClientService]
     [ClientRepository]
-    [AuthClient (OpenFeign)]
   }
   
   component "Wallet Service" as walletsvc {
-    [WalletController]
-    [WalletService]
     [WalletRepository]
   }
-  
-  component "Order Service" as ordersvc {
-    [OrderController]
-    [OrderSagaOrchestrator]
-    [OrderService]
-    [OrderRepository]
-    [OpenFeign Clients]
-    [WebSocket Publisher]
-  }
-  
-  component "Matching Service" as matchingsvc {
-    [OrderMatchingService]
-    [Market Maker Engine]
-    [ScheduledExecutor]
-    [MatchingRepository]
-  }
 }
 
-package "Infrastructure Layer" as infra_layer {
-  
-  component "Message Broker" as mq {
+package "Infrastructure Layer" {
+  component "RabbitMQ Broker" as mq {
     queue "ORDER_QUEUE"
     queue "MATCHING_QUEUE"
-    [RabbitMQ + JSON]
   }
   
-  component "WebSocket Infrastructure" as ws {
-    [STOMP Protocol]
-    [User Queues]
-  }
+  component "WebSocket Server" as ws
 }
 
-package "Persistence Layer" as data_layer {
-  component "Data Access" as dataaccess {
-    [JPA/Hibernate]
-  }
-  
+package "Persistence Layer" {
   database "AuthDB (H2)" as authdb
   database "ClientDB (H2)" as clientdb
   database "WalletDB (H2)" as walletdb
@@ -85,61 +54,49 @@ package "Persistence Layer" as data_layer {
   database "MatchingDB (H2)" as matchingdb
 }
 
-' Main flow connections
-reactui --> gateway : REST API
-reactui ..> ws : WebSocket
+' --- Connexions ---
 
-gateway --> authsvc : /auth/**
-gateway --> clientsvc : /clients/**
-gateway --> walletsvc : /wallet/**
-gateway --> ordersvc : /orders/**
+' Flux Principal
+reactui --> gateway : HTTPS
+reactui <.. ws : WebSocket Events
 
-' Inter-service communication
-ordersvc --> gateway : OpenFeign calls
-clientsvc --> gateway : Auth validation
+' Gateway Routing
+gateway --> authsvc : REST
+gateway --> clientsvc : REST
+gateway --> walletsvc : REST
+gateway --> ordersvc : REST
 
-' Message queue flow
-ordersvc --> mq : Publish orders
-mq --> matchingsvc : Consume orders
-matchingsvc --> mq : Publish trades
-mq --> ordersvc : Consume trades
+' Communication Inter-Services
+ordersvc ..> gateway : Feign Client
+clientsvc ..> gateway : Feign Client
 
-' WebSocket flow
-ordersvc --> ws : Real-time updates
-ws ..> reactui : Notifications
+' Messaging (Event-Driven)
+ordersvc --> mq : Publish
+mq --> matchingsvc : Subscribe
+matchingsvc --> mq : Publish
+mq --> ordersvc : Subscribe
 
-' Data persistence
-authsvc --> dataaccess
-clientsvc --> dataaccess
-walletsvc --> dataaccess
-ordersvc --> dataaccess
-matchingsvc --> dataaccess
+' WebSocket Updates
+ordersvc --> ws : Push Updates
 
-dataaccess --> authdb
-dataaccess --> clientdb
-dataaccess --> walletdb
-dataaccess --> orderdb
-dataaccess --> matchingdb
+' --- CORRECTION MAJEURE ICI ---
+' Chaque Repository interne pointe DIRECTEMENT vers sa DB
+[AuthRepository] --> authdb
+[ClientRepository] --> clientdb
+[WalletRepository] --> walletdb
+[OrderRepository] --> orderdb
+[MatchingRepository] --> matchingdb
 
 note right of ordersvc
-**SAGA Orchestrator**
-- Distributed transactions
-- Compensation logic
-- Service coordination
+**SAGA Pattern**
+Orchestration locale
+via SagaOrchestrator
 end note
 
 note bottom of mq
-**Asynchronous Communication**
-- Event-driven architecture
-- Loose coupling
-- Scalable messaging
-end note
-
-note left of ws
-**Real-time Updates**
-- SockJS fallback
-- User-specific channels
-- Order notifications
+**Decoupling**
+Aucun lien direct HTTP
+entre Order et Matching
 end note
 
 @enduml

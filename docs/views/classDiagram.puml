@@ -1,129 +1,108 @@
 @startuml classDiagram
-title BrokerX - Class Diagram (Microservices Architecture)
+title BrokerX - Simplified Class Diagram (Microservices Architecture)
+
+package "Gateway Service" {
+    class ApiGateway
+    class JwtAuthFilter
+}
 
 package "AuthService" {
     class UserCredential {
-        -id : Long
         -email : String
         -passwordHash : String
         -status : UserStatus
-        -verificationToken : String
-        -otpCode : String
-        -otpExpiry : LocalDateTime
-        +validatePassword(password : String) : boolean
-        +generateOTP() : String
-        +isOTPValid(code : String) : boolean
     }
     
     enum UserStatus {
-        PENDING
-        ACTIVE  
-        INACTIVE
+        PENDING, ACTIVE, INACTIVE
     }
 }
 
 package "ClientService" {
     class Client {
         -clientId : Long
-        -name : String
         -email : String
-        -verificationToken : String
-        -statut : String
-        +isVerified() : boolean
-        +generateToken() : String
+        -name : String
     }
+    
+    interface ClientServiceClient
 }
 
 package "WalletService" {
     class Wallet {
-        -walletId : Long
         -ownerEmail : String
         -balance : BigDecimal
-        +credit(amount : BigDecimal) : void
-        +debit(amount : BigDecimal) : boolean
-        +hasBalance(amount : BigDecimal) : boolean
     }
+    
+    interface WalletServiceClient
 }
 
 package "OrderService" {
     class Order {
         -orderId : Long
-        -clientId : Long
         -symbol : String
         -price : BigDecimal
         -quantity : Integer
         -status : OrderStatus
         -orderType : OrderType
-        -timestamp : LocalDateTime
-        +calculateTotal() : BigDecimal
-        +canExecute() : boolean
     }
     
-    class Transaction {
-        -transactionId : Long
-        -orderId : Long
-        -type : TransactionType
-        -amount : BigDecimal
-        -dateTransaction : LocalDateTime
-        -description : String
-    }
+    class OrderSagaOrchestrator
+    class MatchingConsumer
     
     enum OrderStatus {
-        PENDING
-        EXECUTED
-        CANCELLED
-        FAILED
+        PENDING, FILLED, CANCELLED
     }
     
     enum OrderType {
-        BUY
-        SELL
-    }
-    
-    enum TransactionType {
-        ORDER
-        DEPOSIT
-        WITHDRAWAL
+        BUY, SELL
     }
 }
 
 package "MatchingService" {
     class MatchingOrder {
-        -id : Long
-        -orderId : Long
+        -orderId : String
         -stockSymbol : String
         -quantity : Integer
-        -remainingQuantity : Integer
         -price : BigDecimal
         -orderType : OrderType
-        -timestamp : LocalDateTime
-        -status : MatchingStatus
-        +match(otherOrder : MatchingOrder) : boolean
-        +isFullyMatched() : boolean
     }
     
-    enum MatchingStatus {
-        PENDING
-        PARTIALLY_MATCHED
-        FULLY_MATCHED
-        CANCELLED
-    }
+    class OrderMatchingService
+    class TradeDto
 }
 
-' Relationships
-UserCredential ||--|| UserStatus
-Client ||--o{ Order : places
-Order ||--|| OrderStatus
-Order ||--|| OrderType
-Order ||--o{ Transaction : generates
-Transaction ||--|| TransactionType
-MatchingOrder ||--|| MatchingStatus
-MatchingOrder ||--|| OrderType
-Order ||--o| MatchingOrder : becomes
+package "MarketDataService" {
+    class MarketQuote {
+        -symbol : String
+        -bid : Double
+        -ask : Double
+        -lastPrice : Double
+    }
+    
+    class MarketDataService
+}
 
-' Cross-service relationships (via APIs)
-Client ||--|| Wallet : owns (via email)
-Order ||--|| Client : belongsTo (via clientId)
-Order ||--|| Wallet : usesBalance (via clientEmail)
+' Essential relationships
+ApiGateway --> JwtAuthFilter
+UserCredential --> UserStatus
+Order --> OrderStatus
+Order --> OrderType
+MatchingOrder --> OrderType
+
+' Cross-service relationships
+ApiGateway --> AuthService
+ApiGateway --> ClientService
+ApiGateway --> WalletService
+ApiGateway --> OrderService
+ApiGateway --> MarketDataService
+
+OrderSagaOrchestrator --> WalletServiceClient
+OrderSagaOrchestrator --> ClientServiceClient
+MatchingConsumer --> WalletServiceClient
+MatchingConsumer --> ClientServiceClient
+
+OrderService --> MatchingService : RabbitMQ
+MatchingService --> OrderService : RabbitMQ
 
 @enduml

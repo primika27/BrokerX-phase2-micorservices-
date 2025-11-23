@@ -6,14 +6,37 @@ Person(backoffice, "Back-Office", "Supervision et gestion des règlements")
 Person(compliance, "Conformité / Risque", "Audit, surveillance pré- et post-trade")
 System_Ext(marketdata, "Fournisseurs de données de marché", "Envoient cotations temps réel")
 System_Ext(exchange, "Bourses externes", "Exécution des ordres")
+System_Ext(smtp, "Serveur SMTP", "Service d'envoi d'emails")
 
-System(brokerx, "BrokerX", "Plateforme monolithique de courtage")
+System_Boundary(brokerx, "BrokerX - Microservices Architecture") {
+    System(frontend, "Frontend React", "Interface utilisateur web")
+    System(gateway, "API Gateway", "Point d'entrée unique, authentification JWT, routage")
+    System(authservice, "Auth Service", "Authentification, gestion des tokens JWT")
+    System(clientservice, "Client Service", "Gestion des profils clients, inscription, vérification")
+    System(walletservice, "Wallet Service", "Gestion des portefeuilles, dépôts, transactions")
+    System(orderservice, "Order Service", "Placement d'ordres, historique, orchestration SAGA")
+    System(matchingservice, "Matching Service", "Moteur de matching, exécution des trades")
+    System(marketdataservice, "Market Data Service", "Diffusion temps réel, cotations, WebSocket")
+}
 
-Rel(client, brokerx, "Passe des ordres, consulte portefeuille, s’authentifie")
-Rel(backoffice, brokerx, "Supervision, gestion des règlements")
-Rel(compliance, brokerx, "Audit, rapports de conformité")
-Rel(marketdata, brokerx, "Flux de données de marché (prix, cotations)")
-Rel(brokerx, exchange, "Routage et exécution des ordres")
+Rel(client, frontend, "Interface web, trading")
+Rel(frontend, gateway, "API calls, WebSocket")
+Rel(gateway, authservice, "Authentification, validation JWT")
+Rel(gateway, clientservice, "Gestion profil, inscription")
+Rel(gateway, walletservice, "Transactions, soldes")
+Rel(gateway, orderservice, "Placement ordres, historique")
+Rel(gateway, marketdataservice, "Données temps réel, abonnements")
+
+Rel(orderservice, matchingservice, "Ordres à matcher via RabbitMQ")
+Rel(orderservice, walletservice, "Validation soldes, débits/crédits")
+Rel(orderservice, clientservice, "Récupération emails clients")
+Rel(matchingservice, orderservice, "Résultats matching via RabbitMQ")
+
+Rel(backoffice, gateway, "Supervision, gestion règlements")
+Rel(compliance, gateway, "Audit, rapports conformité")
+Rel(marketdata, marketdataservice, "Flux données marché (simulées)")
+Rel(orderservice, exchange, "Routage ordres externes (futur)")
+Rel(orderservice, smtp, "Notifications email")
 
 SHOW_LEGEND()
 @enduml

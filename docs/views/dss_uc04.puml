@@ -1,0 +1,32 @@
+@startuml dss_uc04
+title DSS - UC04: Abonnement aux données de marché
+
+actor ":Client" as Client
+participant ":Système" as System
+
+== Abonnement WebSocket aux cotations ==
+Client -> System : subscribe(String[] symbols, String subscriptionType)
+alt Symboles valides et quota respecté
+    System --> Client : subscriptionConfirmation: "Abonnement activé", symbols
+    
+    == Diffusion temps réel ==
+    loop Cotations mises à jour
+        System -> Client : marketQuote(String symbol, Double price, Double volume, LocalDateTime timestamp)
+    end
+else Symboles invalides ou quota dépassé
+    System --> Client : subscriptionError: "Trop de symboles demandés" ou "Symboles invalides"
+end
+
+== Désabonnement ==
+Client -> System : unsubscribe(String[] symbols)
+System --> Client : unsubscribeConfirmation: "Désabonnement effectué"
+
+== Consultation cotations REST ==
+Client -> System : getQuotes(String symbols)
+alt Symboles disponibles
+    System --> Client : latestQuotes: List<MarketQuote>
+else Erreur serveur
+    System --> Client : erreurServeur: "Service temporairement indisponible"
+end
+
+@enduml

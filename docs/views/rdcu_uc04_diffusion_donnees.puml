@@ -1,59 +1,63 @@
 @startuml rdcu_uc04_diffusion_donnees
-title RDCU UC04b - Génération et diffusion des données de marché en temps réel
+title RDCU UC04b - Génération et diffusion des données de marché
 
 participant ":SpringTaskScheduler" as Scheduler
 participant ":MarketDataService" as BusinessService
-participant ":userSubscriptions : Map<String, Set<String>>" as SubsMap
-participant ":userSubscriptionTypes : Map<String, String>" as TypeMap
-participant ":lastPrices : Map<String, Double>" as PriceCache
-participant ":ThreadLocalRandom" as Random
-participant ":MarketQuote" as Quote
+participant ":userSubscriptions" as SubsMap
+participant ":lastPrices" as PriceCache
 participant ":SimpMessagingTemplate" as MessageTemplate
+participant ":Client" as Client
 
--> Scheduler : @Scheduled(fixedRate = 1000)\nevery 1 second
+-> Scheduler : @Scheduled(fixedRate = 1000)
 activate Scheduler
 
 Scheduler -> BusinessService : broadcastMarketData()
 activate BusinessService
 
 BusinessService -> SubsMap : entrySet()
-SubsMap --> BusinessService : Set<Entry<String, Set<String>>>
+SubsMap --> BusinessService : userSubscriptions
 
-alt userSubscriptions.isEmpty() == false
+alt userSubscriptions not empty
     loop Pour chaque utilisateur abonné
-        BusinessService -> BusinessService : String userEmail = entry.getKey()
-        BusinessService -> BusinessService : Set<String> symbols = entry.getValue()
-        BusinessService -> TypeMap : get(userEmail)
-        TypeMap --> BusinessService : String subscriptionType
+        BusinessService -> BusinessService : generateMarketQuote(symbol)
         
-        alt subscriptionType.equals("quotes") || subscriptionType == null
-            loop Pour chaque symbole abonné
-                BusinessService -> BusinessService : generateMarketQuote(symbol)
-                activate BusinessService
+        BusinessService -> PriceCache : get(symbol)
+        PriceCache --> BusinessService : currentPrice
+        
+        BusinessService -> BusinessService : calculateNewPrice()
+        note right : Volatility ±2%, spread 0.1%
+        
+        BusinessService -> PriceCache : put(symbol, newPrice)
+        
+        create participant ":MarketQuote" as Quote
+        BusinessService -> Quote : new MarketQuote(symbol, bid, ask, price, volume)
+        
+        BusinessService -> MessageTemplate : convertAndSendToUser(userEmail, "/queue/quotes", quote)
+        MessageTemplate --> Client : Real-time market quote
+    end
+else
+    BusinessService -> BusinessService : return (no subscriptions)
+end
+
+deactivate BusinessService
+deactivate Scheduler
+
+note over BusinessService, Client
+    Processus automatique toutes les secondes
+    Génération de prix réalistes avec volatility
+    Diffusion via WebSocket STOMP
+end note
+
+@enduml
                 
-                BusinessService -> PriceCache : get(symbol)
-                PriceCache --> BusinessService : double currentPrice
-                
-                BusinessService -> Random : nextDouble()
-                Random --> BusinessService : double randomValue
-                
-                BusinessService -> BusinessService : calculateVolatility()\ndouble volatility = 0.02\ndouble change = (randomValue - 0.5) * 2 * volatility * currentPrice
-                
-                BusinessService -> BusinessService : double newPrice = Math.max(0.01, currentPrice + change)
-                
-                BusinessService -> PriceCache : put(symbol, newPrice)
-                PriceCache --> BusinessService : previous price
-                
-                BusinessService -> BusinessService : calculateSpread()\ndouble spread = newPrice * 0.001\ndouble bid = newPrice - spread/2\ndouble ask = newPrice + spread/2
-                
-                BusinessService -> Random : nextInt(100, 10000)
-                Random --> BusinessService : int volume
+                BusinessService -> BusinessService : double changePercent = (change/currentPrice)*100
                 
                 BusinessService -> Quote : new MarketQuote(symbol, bid, ask, newPrice, volume)
                 activate Quote
+                Quote --> BusinessService : marketQuote
                 
                 BusinessService -> Quote : setChange(change)
-                BusinessService -> Quote : setChangePercent((change/currentPrice)*100)
+                BusinessService -> Quote : setChangePercent(changePercent)
                 Quote --> BusinessService : marketQuote configured
                 deactivate Quote
                 

@@ -1,7 +1,6 @@
 @startuml rdcu_uc04_connexion_websocket
 title RDCU UC04a - Connexion WebSocket et abonnement aux données de marché
 
-participant ":Frontend (React)" as Frontend
 participant ":Gateway" as Gateway  
 participant ":JwtAuthFilter" as AuthFilter
 participant ":MarketDataWebSocketController" as WSController
@@ -9,10 +8,7 @@ participant ":MarketDataService" as BusinessService
 participant ":userSubscriptions : Map<String, Set<String>>" as SubsMap
 participant ":userSubscriptionTypes : Map<String, String>" as TypeMap
 
--> Frontend : connectWebSocket(jwtToken)
-activate Frontend
-
-Frontend -> Gateway : WebSocket handshake /ws/market-data\nUpgrade: websocket\nAuthorization: Bearer {jwt}
+-> Gateway : WebSocket handshake /ws/market-data\nUpgrade: websocket\nAuthorization: Bearer {jwt}
 activate Gateway
 
 Gateway -> AuthFilter : filter(exchange, chain)
@@ -34,40 +30,37 @@ note right WSController : Session WebSocket créée\nsessionId généré automat
 
 WSController --> Gateway : Connection successful
 deactivate WSController
-Gateway --> Frontend : WebSocket connected
 
-Frontend -> Gateway : STOMP SEND /app/subscribe\n{ "symbols": ["AAPL", "GOOGL", "TSLA"] }
-Gateway -> WSController : handleSubscription(symbols[], StompHeaderAccessor)
+Gateway -> WSController : STOMP SEND /app/subscribe\n{ "symbols": ["AAPL", "GOOGL", "TSLA"] }
+Gateway -> WSController : subscribe(SubscriptionRequest, StompHeaderAccessor)
 activate WSController
 
-WSController -> WSController : extractUserEmail(headerAccessor)\nString userEmail = header.getFirstNativeHeader("X-Authenticated-User")
+WSController -> WSController : extractUserEmailFromHeaders(headerAccessor)
 
-alt En-tête X-Authenticated-User présent
-    WSController -> BusinessService : addSubscription(userEmail, symbols[], "quotes")
+alt userEmail != null (authentifié)
+    WSController -> BusinessService : addSubscription(userEmail, symbols[], subscriptionType)
     activate BusinessService
     
     BusinessService -> BusinessService : validateSymbols(symbols[])
-    note right : Vérifier que les symboles sont\ndans supportedSymbols
-    
     BusinessService -> SubsMap : put(userEmail, validSymbolsSet)
-    SubsMap --> BusinessService : previous subscription (if any)
-    
-    BusinessService -> TypeMap : put(userEmail, "quotes")
-    TypeMap --> BusinessService : previous type (if any)
-    
+    BusinessService -> TypeMap : put(userEmail, subscriptionType)
     BusinessService --> WSController : subscription added
     deactivate BusinessService
     
-    WSController -> WSController : messagingTemplate.convertAndSendToUser(userEmail, "/queue/confirmation", confirmationData)
-    WSController --> Frontend : STOMP MESSAGE /user/queue/confirmation\n{ "type": "subscription_confirmed", "symbols": [...] }
+    WSController -> BusinessService : sendSubscriptionConfirmation(userEmail, symbols[])
+    activate BusinessService
+    BusinessService -> BusinessService : messagingTemplate.convertAndSendToUser(...)
+    BusinessService --> WSController : STOMP MESSAGE confirmation sent
+    deactivate BusinessService
 
-else En-tête manquant (requête non authentifiée)
-    WSController -> WSController : messagingTemplate.convertAndSendToUser(sessionId, "/queue/error", errorData)
-    WSController --> Frontend : STOMP MESSAGE /user/queue/error\n{ "type": "error", "message": "Authentification échouée" }
+else userEmail == null (authentification échouée)
+    WSController -> BusinessService : sendError(sessionId, "Authentification échouée")
+    activate BusinessService
+    BusinessService --> WSController : STOMP MESSAGE error sent
+    deactivate BusinessService
 end
 
 deactivate WSController
 deactivate Gateway
-deactivate Frontend
 
 @enduml

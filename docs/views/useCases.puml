@@ -1,15 +1,81 @@
 @startuml
 left to right direction
-actor Client as C
-
-rectangle BrokerX {
-  usecase "UC-01\nInscription&Vérification d’identité" as UC01
-  usecase "UC-02\nAuthentification & MFA" as UC02
-  usecase "UC-03\nApprovisionnement du portefeuille" as UC03
-  usecase "UC-05\nPlacement d'un ordre" as UC05
+skinparam usecase {
+  BackgroundColor LightBlue
+  BorderColor DarkBlue
 }
-C --> UC01
-C --> UC02
-C --> UC03
-C --> UC05
+
+actor "Client\n(Investisseur)" as Client
+actor "Système\n(Automatique)" as System
+
+rectangle "BrokerX - Plateforme de Courtage" as BrokerX {
+  
+  package "Gestion des Comptes" {
+    usecase "UC-01\nInscription &\nVérification d'identité" as UC01
+    usecase "UC-02\nAuthentification\n& MFA" as UC02
+    usecase "UC-03\nApprovisionnement\ndu portefeuille" as UC03
+  }
+  
+  package "Données de Marché" {
+    usecase "UC-04\nAbonnement aux\ndonnées de marché" as UC04
+  }
+  
+  package "Gestion des Ordres" {
+    usecase "UC-05\nPlacement\nd'un ordre" as UC05
+    usecase "UC-06\nModification/Annulation\nd'un ordre" as UC06
+    usecase "UC-07\nAppariement interne\n& Exécution (matching)" as UC07
+  }
+  
+  package "Notifications" {
+    usecase "UC-08\nConfirmation d'exécution\n& Notifications" as UC08
+  }
+}
+
+' Relations Client
+Client --> UC01 : s'inscrire
+Client --> UC02 : se connecter
+Client --> UC03 : déposer des fonds
+Client --> UC04 : consulter cotations
+Client --> UC05 : placer ordre
+Client --> UC06 : modifier/annuler ordre
+Client <-- UC08 : recevoir notifications
+
+' Relations Système automatique
+System --> UC07 : traiter ordres automatiquement
+System --> UC08 : envoyer confirmations
+
+' Relations entre use cases
+UC01 ..> UC02 : <<include>>
+UC02 ..> UC05 : <<extend>>
+UC05 ..> UC07 : <<include>>
+UC07 ..> UC08 : <<include>>
+UC06 ..> UC07 : <<include>>
+UC04 ..> UC05 : <<extend>>
+
+note top of UC01
+Inscription avec email,
+vérification par token,
+création compte client
+end note
+
+note top of UC02
+Authentification JWT,
+code OTP par email,
+session sécurisée
+end note
+
+note right of UC07
+Processus automatique:
+- Matching des ordres
+- Exécution des trades
+- Mise à jour statuts
+end note
+
+note bottom of UC08
+Notifications automatiques:
+- Emails de confirmation
+- WebSocket temps réel
+- Historique transactions
+end note
+
 @enduml

@@ -1,0 +1,33 @@
+@startuml dss_uc07
+title DSS - UC07: Appariement interne & Exécution (matching)
+
+actor ":Client" as Client
+participant ":Système" as System
+
+note over System : Le matching est automatique via RabbitMQ
+
+== Notification automatique d'exécution ==
+note right: Déclenché automatiquement après matching
+alt Ordre correspondant trouvé et exécuté
+    System --> Client : notificationExecution: "Ordre exécuté", tradeDetails
+else Aucun ordre correspondant
+    System --> Client : notificationAttente: "Ordre en attente de matching"
+end
+
+== Modification d'ordre en cours ==
+Client -> System : modifyOrder(int orderId, Double newPrice, Integer newQuantity)
+alt Ordre modifiable
+    System --> Client : confirmationModification: "Ordre modifié et re-matché"
+else Ordre déjà exécuté ou introuvable
+    System --> Client : erreurModification: "Order not found" ou "Already filled"
+end
+
+== Annulation d'ordre ==
+Client -> System : cancelOrder(int orderId)
+alt Ordre annulable
+    System --> Client : confirmationAnnulation: "Ordre annulé"
+else Ordre introuvable ou déjà exécuté
+    System --> Client : erreurAnnulation: "Order not found"
+end
+
+@enduml

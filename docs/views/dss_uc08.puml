@@ -1,0 +1,38 @@
+@startuml dss_uc08
+title DSS - UC08: Confirmation d'exécution & Notifications
+
+actor ":Client" as Client
+participant ":Système" as System
+
+== Placement d'une commande ==
+Client -> System : placeOrder(String symbol, int quantity, String orderType)
+alt Commande placée avec succès
+    System --> Client : confirmationCommande: "Ordre placé", numeroOrdre
+else Erreur de placement
+    System --> Client : erreurCommande: "Fonds insuffisants" ou "Ordre invalide"
+end
+
+== Notification automatique d'exécution ==
+note right: Déclenchée automatiquement après matching
+System -> Client : sendOrderStatusEmail(String clientEmail, Order order, String status, String message)
+note over Client : Reçoit email HTML avec détails
+
+== Notification WebSocket temps réel ==
+System -> Client : broadcastOrderUpdate(Order order, String oldStatus, String message)
+alt Client connecté via WebSocket
+    Client -> System : accuseReceptionWebSocket()
+else Client déconnecté
+    note over System : Email reste envoyé pour trace persistante
+end
+
+
+== Notification de changement de statut ==
+note right: Annulation, modification, etc.
+System -> Client : sendOrderStatusEmail(String clientEmail, Order order, String newStatus, String reason)
+alt Notification envoyée avec succès
+    System --> Client : confirmationEmail: "Notification sent"
+else Échec d'envoi email
+    System --> Client : erreurNotification: "Failed to send email"
+end
+
+@enduml

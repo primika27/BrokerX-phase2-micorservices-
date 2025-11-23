@@ -1,258 +1,94 @@
-@startuml deployment
-title "BrokerX - Deployment Architecture (Simplified)"
+@startuml deployment_refined
+!theme plain
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 40
 
-actor "User Browser" as user
+title "BrokerX - Deployment Diagram"
 
-' Docker Environment
-node "Docker Host Environment" as dockerhost {
-  
-  ' Frontend Zone
-  node "Frontend Zone" as frontend_zone {
-    component "React App\n:5173" as frontend {
-      artifact "TypeScript UI"
-      artifact "WebSocket Client"
-    }
-  }
-  
-  ' API Gateway Zone
-  node "Gateway Zone" as gateway_zone {
-    component "Spring Gateway\n:8080" as gateway {
-      artifact "JWT Validation"
-      artifact "Route Management"
-    }
-  }
-  
-  ' Business Services Zone
-  node "Microservices Zone" as services_zone {
+actor "Client\n(Browser)" as user
+
+node "Host Server (Linux/Cloud VM)" as host {
+
+    node "Docker Engine" {
     
-    component "Auth Service\n:8081" as authsvc {
-      database "AuthDB"
+        node "frontend-container" <<Docker>> {
+            artifact "react-app-dist" as react
+            note right: Port 3000
+        }
+
+        node "gateway-container" <<Docker>> {
+            artifact "brokerx-gateway.jar" as gw_jar
+            note right: Port 8080
+        }
+
+        package "Backend Containers" {
+            node "auth-service" <<Docker>> {
+                artifact "brokerx-auth.jar" as auth_jar
+            }
+            
+            node "order-service" <<Docker>> {
+                artifact "brokerx-order.jar" as order_jar
+            }
+            
+            node "wallet-service" <<Docker>> {
+                artifact "brokerx-wallet.jar" as wallet_jar
+            }
+            
+            node "matching-service" <<Docker>> {
+                artifact "brokerx-matching.jar" as match_jar
+            }
+            
+            node "market-data-service" <<Docker>> {
+                artifact "brokerx-market.jar" as market_jar
+            }
+        }
+
+        node "rabbitmq-container" <<Docker>> {
+            component "RabbitMQ Broker" as mq
+            note right: Port 5672\nMgmt: 15672
+        }
     }
-    
-    component "Client Service\n:8082" as clientsvc {
-      database "ClientDB"
+
+    folder "Host Volumes (Persistence)" as volumes {
+        file "/var/lib/brokerx/auth/h2.db" as vol_auth
+        file "/var/lib/brokerx/wallet/h2.db" as vol_wallet
+        file "/var/lib/brokerx/order/h2.db" as vol_order
+        file "/var/lib/brokerx/matching/h2.db" as vol_match
     }
-    
-    component "Wallet Service\n:8083" as walletsvc {
-      database "WalletDB"
-    }
-    
-    component "Order Service\n:8084" as ordersvc {
-      artifact "SAGA Orchestrator"
-      artifact "WebSocket Server"
-      database "OrderDB"
-    }
-    
-    component "Matching Service\n:8085" as matchingsvc {
-      artifact "Matching Engine"
-      artifact "Market Maker"
-      database "MatchingDB"
-    }
-  }
-  
-  ' Infrastructure Zone
-  node "Infrastructure Zone" as infra_zone {
-    component "RabbitMQ\n:5672" as rabbitmq {
-      artifact "ORDER_QUEUE"
-      artifact "MATCHING_QUEUE"
-    }
-  }
-  
-  ' Storage Zone
-  folder "Persistent Storage" as storage {
-    artifact "./data/auth/" as authvol
-    artifact "./data/client/" as clientvol
-    artifact "./data/wallet/" as walletvol
-    artifact "./data/order/" as ordervol
-    artifact "./data/matching/" as matchingvol
-  }
 }
 
-' Network Communications
-user --> frontend : HTTP Browser
-frontend --> gateway : REST API + WebSocket
+' --- Flux Réseau ---
 
-gateway --> authsvc : /api/auth/**
-gateway --> clientsvc : /api/clients/**
-gateway --> walletsvc : /api/wallet/**
-gateway --> ordersvc : /api/orders/**
+' Entrée externe
+user --> react : HTTPS
+react --> gw_jar : REST / WSS
 
-' Inter-service Communication (via Gateway)
-ordersvc --> gateway : OpenFeign Calls
-clientsvc --> gateway : Auth Validation
+' Routage Gateway vers les JARs
+gw_jar --> auth_jar : :8081
+gw_jar --> wallet_jar : :8083
+gw_jar --> order_jar : :8084
+gw_jar --> match_jar : :8085
+gw_jar --> market_jar : :8086
 
-' Message Queue Communication
-ordersvc <--> rabbitmq : Order Events
-matchingsvc <--> rabbitmq : Trade Events
+' Communication Inter-Services (Via Gateway comme indiqué dans votre design)
+order_jar ..> gw_jar : Feign Calls
 
-' Real-time Communication
-ordersvc ..> frontend : WebSocket Updates
+' Messaging Asynchrone
+order_jar <--> mq : AMQP (Orders)
+match_jar <--> mq : AMQP (Trades)
 
-' Volume Mappings
-authsvc --> authvol
-clientsvc --> clientvol
-walletsvc --> walletvol
-ordersvc --> ordervol
-matchingsvc --> matchingvol
+' Persistance (Le JAR écrit sur le disque monté)
+auth_jar --> vol_auth : Mount /data
+wallet_jar --> vol_wallet : Mount /data
+order_jar --> vol_order : Mount /data
+match_jar --> vol_match : Mount /data
 
-' Architecture Notes
-note top of gateway
-**API Gateway**
-- Single entry point
-- JWT authentication
-- Request routing
-end note
-
-note right of ordersvc
-**Order Service**
-- SAGA pattern
-- Real-time notifications
-- Transaction orchestration
-end note
-
-note bottom of rabbitmq
-**Message Broker**
-- Asynchronous communication
-- Event-driven architecture
-- Microservice decoupling
-end note
-
-note left of matchingsvc
-**Matching Engine**
-- Order matching algorithms
-- Synthetic market making
-- Trade execution
-end note
-
-note bottom of storage
-**Persistent Storage**
-- Database per service
-- Volume mappings
-- Data isolation
-end note
-
-@enduml
-
-    ' Wallet Service
-    node "Wallet Service Container :8083" as wallet {
-      component "Wallet Management\nBalance Operations\nTransactions" as walletapp
-      database "WalletDB (H2)" as walletdb
-    }
-
-    ' Order Service
-    node "Order Service Container :8084" as order {
-      component "Order Processing\nBuy/Sell Orders\nTransaction History" as orderapp
-      database "OrderDB (H2)" as orderdb
-    }
-    
-    ' Matching Service
-    node "Matching Service Container :8085" as matching {
-      component "Order Matching\nMarket Making\nExecution Engine" as matchingapp
-      database "MatchingDB (H2)" as matchingdb
-    }
-    
-    ' Message Queue
-    node "RabbitMQ Container :5672" as rabbitmq {
-      component "Message Broker\norderQueue\nmatchingQueue" as mq
-    }
-  }
-
-  folder "Persistent Volumes" as volumes {
-    artifact "./data/auth/" as authvol
-    artifact "./data/client/" as clientvol
-    artifact "./data/wallet/" as walletvol
-    artifact "./data/order/" as ordervol
-    artifact "./data/matching/" as matchingvol
-    artifact "./data/rabbitmq/" as mqvol
-  }
-}
-
-' User Interactions
-user --> reactapp : HTTP Browser
-reactapp --> gw : API Calls :8080
-
-' Gateway Routing
-gw --> authapp : /api/auth/**
-gw --> clientapp : /api/clients/**
-gw --> walletapp : /api/wallet/**
-gw --> orderapp : /api/orders/**
-
-' Inter-Service Communication (via Gateway)
-clientapp --> gw : Feign Auth Calls
-orderapp --> gw : Feign Wallet Calls
-orderapp --> gw : Feign Client Calls
-
-' Message Queue Communication
-orderapp --> mq : Publish Orders
-mq --> matchingapp : Consume Orders
-
-' Database Connections
-authapp --> authdb
-clientapp --> clientdb
-walletapp --> walletdb
-orderapp --> orderdb
-matchingapp --> matchingdb
-
-' Volume Mappings
-authdb --> authvol
-clientdb --> clientvol
-walletdb --> walletvol
-orderdb --> ordervol
-matchingdb --> matchingvol
-mq --> mqvol
-
-' === CI/CD Flow ===
-dev --> repo : git push
-actions --> maven : mvn test / package
-maven --> image : docker build brokerx-*
-image --> healthcheck : docker run + curl /actuator/health
-actions --> registry : push (optionnel)
-registry --> vm : pull (optionnel)
-dev --> vm : docker compose up -d
-
-' === Notes explicatives ===
-note right of gw
-**Gateway (8080)**  
-- Point d’entrée unique  
-- Validation JWT & routage  
-- Ajout headers X-Authenticated-User  
-end note
-
-note bottom of wallet
-**WalletService**  
-- Gère les dépôts, retraits et soldes  
-- Appelé par OrderService via Feign  
-end note
-
-note bottom of vm
-Chaque microservice possède :  
-- Un conteneur indépendant  
-- Sa propre base H2 (Database per Service)  
-- Communication HTTP via le Gateway  
-- Tests santé : `/actuator/health`  
-end note
-
-' Additional Notes
-note bottom of mq
-**RabbitMQ Message Queue**
-- Asynchronous order processing
-- Event-driven architecture
-- Decoupled microservices
-end note
-
-note bottom of matchingapp
-**Matching Service**
-- Order matching engine
-- Market making algorithm
-- Trade execution logic
-end note
-
-note bottom of reactapp
-**React Frontend**
-- TypeScript-based UI
-- JWT authentication
-- Protected routes
-- API service layer
+note bottom of volumes
+  **Bind Mounts**
+  Assure la persistance des fichiers H2
+  même si les conteneurs redémarrent.
 end note
 
 @enduml
