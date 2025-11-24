@@ -1,0 +1,68 @@
+@startuml websocket_activity
+title Diagramme d'Activité - Notifications WebSocket Temps Réel
+
+|Frontend|
+start
+:Utilisateur se connecte au Dashboard;
+:OrderNotificationService.connect(jwt);
+note right: SockJS + STOMP via Gateway :8080
+
+|Backend|
+:WebSocketConfig accepte la connexion;
+:JwtHandshakeInterceptor valide le token;
+:Connexion WebSocket établie;
+
+|Frontend|
+:OrderNotificationService.subscribeToOrderUpdates();
+:Envoie message vers /app/orders/subscribe;
+
+|Backend|
+:OrderWebSocketController.subscribeToOrderUpdates();
+:Extrait email depuis X-Authenticated-User header;
+:Confirme l'abonnement via /user/queue/order-updates;
+
+|Frontend|
+:Callback enregistré pour les mises à jour d'ordres;
+:Interface utilisateur prête pour les notifications;
+
+|Backend|
+if (Action utilisateur?) then (Annulation)
+    :OrderSagaOrchestrator.cancelOrderSaga();
+    :broadcastOrderUpdate(order, "PENDING", "Order cancelled");
+elseif (Modification) then
+    :OrderSagaOrchestrator.modifyOrderSaga();
+    :broadcastOrderUpdate(order, "PENDING", "Order modified");
+else (Exécution)
+    :MatchingConsumer.receiveTrade(trade);
+    :broadcastOrderUpdate(order, "PENDING", "Order filled");
+endif
+
+:Création OrderUpdateMessage avec tous les détails;
+:messagingTemplate.convertAndSendToUser(clientEmail, "/queue/order-updates", update);
+
+|Frontend|
+:Réception du message dans /user/queue/order-updates;
+:Parse du JSON en OrderUpdate object;
+:Exécution du callback enregistré;
+:loadOrdersOnly() pour rafraîchir la liste;
+:Affichage notification à l'utilisateur;
+
+if (Erreur WebSocket?) then (oui)
+    :Log de l'erreur;
+    :Continue l'opération (non-critique);
+else (non)
+    :Mise à jour temps réel de l'interface utilisateur;
+endif
+
+stop
+
+note bottom
+Technologies utilisées:
+- STOMP over WebSocket
+- Spring SimpMessagingTemplate  
+- SockJS fallback
+- JWT authentication
+- User-specific queues (/user/queue/*)
+end note
+
+@enduml

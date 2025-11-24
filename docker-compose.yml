@@ -130,11 +130,15 @@ services:
             - SPRING_PROFILES_ACTIVE=docker
             - SPRING_DATASOURCE_URL=jdbc:h2:file:/data/orderdb;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=FALSE
             - SPRING_RABBITMQ_HOST=rabbitmq
+            - SPRING_REDIS_HOST=redis
+            - SPRING_REDIS_PORT=6379
+            - SPRING_REDIS_PASSWORD=brokerx123
           volumes:
             - order-data:/data
           depends_on:
             - wallet-service
             - rabbitmq
+            - redis
           networks:
             - brokerx-network
           # healthcheck:
@@ -181,22 +185,43 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:h2:mem:marketdb
       - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=brokerx123
     depends_on:
       - rabbitmq
+      - redis
     networks:
       - brokerx-network
   
   rabbitmq:          
-        image: rabbitmq:3-management
-        hostname: rabbitmq
-        ports:
-          - "5672:5672" # AMQP protocol port
-          - "15672:15672" # Management UI port
-        environment:
-          RABBITMQ_DEFAULT_USER: guest
-          RABBITMQ_DEFAULT_PASS: guest
-        networks:
-          - brokerx-network
+      image: rabbitmq:3-management
+      hostname: rabbitmq
+      ports:
+        - "5672:5672" # AMQP protocol port
+        - "15672:15672" # Management UI port
+      environment:
+        RABBITMQ_DEFAULT_USER: guest
+        RABBITMQ_DEFAULT_PASS: guest
+      networks:
+        - brokerx-network
+
+  # REDIS CACHE
+  redis:
+    image: redis:7-alpine
+    hostname: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass "brokerx123"
+    volumes:
+      - redis-data:/data
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   
 volumes:
   auth-data:
@@ -208,6 +233,8 @@ volumes:
   order-data:
     driver: local
   matching-data:
+    driver: local
+  redis-data:
     driver: local
 networks:
   brokerx-network:

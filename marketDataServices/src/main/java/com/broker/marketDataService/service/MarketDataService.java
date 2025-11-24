@@ -3,6 +3,9 @@ package com.broker.marketDataService.service;
 import com.broker.marketDataService.dto.MarketQuote;
 import com.broker.marketDataService.dto.OrderBook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -10,12 +13,22 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
+import java.time.Duration;
 
 @Service
 public class MarketDataService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
+    
+    // Clés Redis pour les abonnements
+    private static final String REDIS_USER_SUBSCRIPTIONS_KEY = "brokerx:subscriptions:user:";
+    private static final String REDIS_USER_SUB_TYPE_KEY = "brokerx:subscription-types:user:";
+    private static final int SUBSCRIPTION_TTL_HOURS = 24; // TTL pour les abonnements
 
     // Gestion des abonnements par email utilisateur
     private final Map<String, Set<String>> userSubscriptions = new ConcurrentHashMap<>();
@@ -197,8 +210,10 @@ public class MarketDataService {
         System.out.println("Session déconnectée et nettoyée: " + sessionId);
     }
 
-    // Méthodes pour l'API REST
+    // Méthodes pour l'API REST avec cache Redis
+    @Cacheable(value = "market-quotes", key = "#symbols.toString()")
     public List<MarketQuote> getLatestQuotes(Set<String> symbols) {
+        System.out.println("Cache MISS - Récupération des quotes pour: " + symbols);
         List<MarketQuote> quotes = new ArrayList<>();
         for (String symbol : symbols) {
             if (supportedSymbols.contains(symbol)) {
@@ -207,7 +222,10 @@ public class MarketDataService {
         }
         return quotes;
     }
+    
+    @Cacheable(value = "market-quote", key = "#symbol")
     public MarketQuote generateQuote(String symbol) {
+        System.out.println("Cache MISS - Génération quote pour: " + symbol);
         double currentPrice = lastPrices.get(symbol);
         
         // Spread bid/ask (0.1% du prix)
@@ -220,7 +238,192 @@ public class MarketDataService {
         return new MarketQuote(symbol, bid, ask, currentPrice, volume);
     }
 
+    @Cacheable(value = "market-quotes", key = "'all-quotes'")
     public List<MarketQuote> getAllLatestQuotes() {
+        System.out.println("Cache MISS - Récupération de tous les quotes");
         return getLatestQuotes(supportedSymbols);
+    }
+
+    // Invalide le cache lorsque les prix sont mis à jour
+    @CacheEvict(value = {"market-quotes", "market-quote"}, allEntries = true)
+    public void clearMarketDataCache() {
+        System.out.println("Cache Redis invalidé pour market data");
+    }
+    
+    // === NOUVELLES MÉTHODES DE GESTION DES ABONNEMENTS ===
+    
+    public boolean isSupportedSymbol(String symbol) {
+        return supportedSymbols.contains(symbol);
+    }
+    
+    public Set<String> getSupportedSymbols() {
+        return new HashSet<>(supportedSymbols);
+    }
+    
+    public void addUserSubscription(String userEmail, List<String> symbols, String subscriptionType) {
+        try {
+            // Valider les symboles
+            Set<String> validSymbols = symbols.stream()
+                .filter(supportedSymbols::contains)
+                .collect(Collectors.toSet());
+            
+            if (validSymbols.isEmpty()) {
+                System.out.println("Aucun symbole valide pour l'utilisateur: " + userEmail);
+                return;
+            }
+            
+            // Récupérer les abonnements existants depuis Redis
+            String userKey = REDIS_USER_SUBSCRIPTIONS_KEY + userEmail;
+            String typeKey = REDIS_USER_SUB_TYPE_KEY + userEmail;
+            
+            @SuppressWarnings("unchecked")
+            Set<String> existingSymbols = (Set<String>) redisTemplate.opsForValue().get(userKey);
+            if (existingSymbols == null) {
+                existingSymbols = new HashSet<>();
+            }
+            
+            // Ajouter les nouveaux symboles
+            existingSymbols.addAll(validSymbols);
+            
+            // Sauvegarder dans Redis avec TTL
+            redisTemplate.opsForValue().set(userKey, existingSymbols, Duration.ofHours(SUBSCRIPTION_TTL_HOURS));
+            redisTemplate.opsForValue().set(typeKey, subscriptionType, Duration.ofHours(SUBSCRIPTION_TTL_HOURS));
+            
+            // Mettre à jour le cache mémoire pour compatibilité
+            userSubscriptions.put(userEmail, existingSymbols);
+            userSubscriptionTypes.put(userEmail, subscriptionType);
+            
+            System.out.println("Abonnement ajouté/mis à jour pour " + userEmail + ": " + existingSymbols);
+            
+            // Envoyer confirmation
+            sendSubscriptionConfirmation(userEmail, validSymbols.toArray(new String[0]));
+            
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'ajout de l'abonnement pour " + userEmail + ": " + e.getMessage());
+        }
+    }
+    
+    public void removeUserSubscription(String userEmail, List<String> symbols) {
+        try {
+            String userKey = REDIS_USER_SUBSCRIPTIONS_KEY + userEmail;
+            String typeKey = REDIS_USER_SUB_TYPE_KEY + userEmail;
+            
+            @SuppressWarnings("unchecked")
+            Set<String> existingSymbols = (Set<String>) redisTemplate.opsForValue().get(userKey);
+            
+            if (existingSymbols != null) {
+                // Supprimer les symboles spécifiés
+                symbols.forEach(existingSymbols::remove);
+                
+                if (existingSymbols.isEmpty()) {
+                    // Supprimer complètement l'utilisateur
+                    redisTemplate.delete(userKey);
+                    redisTemplate.delete(typeKey);
+                    userSubscriptions.remove(userEmail);
+                    userSubscriptionTypes.remove(userEmail);
+                } else {
+                    // Mettre à jour avec les symboles restants
+                    redisTemplate.opsForValue().set(userKey, existingSymbols, Duration.ofHours(SUBSCRIPTION_TTL_HOURS));
+                    userSubscriptions.put(userEmail, existingSymbols);
+                }
+                
+                System.out.println("Abonnement mis à jour pour " + userEmail + ": " + existingSymbols);
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la suppression de l'abonnement pour " + userEmail + ": " + e.getMessage());
+        }
+    }
+    
+    public void removeAllUserSubscriptions(String userEmail) {
+        try {
+            String userKey = REDIS_USER_SUBSCRIPTIONS_KEY + userEmail;
+            String typeKey = REDIS_USER_SUB_TYPE_KEY + userEmail;
+            
+            // Supprimer de Redis
+            redisTemplate.delete(userKey);
+            redisTemplate.delete(typeKey);
+            
+            // Supprimer du cache mémoire
+            userSubscriptions.remove(userEmail);
+            userSubscriptionTypes.remove(userEmail);
+            
+            System.out.println("Tous les abonnements supprimés pour " + userEmail);
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la suppression complète pour " + userEmail + ": " + e.getMessage());
+        }
+    }
+    
+    public Map<String, Object> getUserSubscriptions(String userEmail) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            String userKey = REDIS_USER_SUBSCRIPTIONS_KEY + userEmail;
+            String typeKey = REDIS_USER_SUB_TYPE_KEY + userEmail;
+            
+            @SuppressWarnings("unchecked")
+            Set<String> symbols = (Set<String>) redisTemplate.opsForValue().get(userKey);
+            String subscriptionType = (String) redisTemplate.opsForValue().get(typeKey);
+            
+            if (symbols != null) {
+                result.put("symbols", symbols);
+                result.put("subscription_type", subscriptionType != null ? subscriptionType : "quotes");
+                result.put("total_symbols", symbols.size());
+                result.put("has_subscriptions", true);
+            } else {
+                result.put("symbols", new HashSet<>());
+                result.put("subscription_type", null);
+                result.put("total_symbols", 0);
+                result.put("has_subscriptions", false);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la récupération des abonnements pour " + userEmail + ": " + e.getMessage());
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
+    }
+    
+    public Map<String, Object> getAllSubscriptions() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // Rechercher toutes les clés d'abonnements
+            Set<String> subscriptionKeys = redisTemplate.keys(REDIS_USER_SUBSCRIPTIONS_KEY + "*");
+            
+            if (subscriptionKeys != null) {
+                Map<String, Object> allSubs = new HashMap<>();
+                
+                for (String key : subscriptionKeys) {
+                    String userEmail = key.replace(REDIS_USER_SUBSCRIPTIONS_KEY, "");
+                    Map<String, Object> userSub = getUserSubscriptions(userEmail);
+                    allSubs.put(userEmail, userSub);
+                }
+                
+                result.put("subscriptions", allSubs);
+                result.put("total_users", allSubs.size());
+                
+                // Statistiques globales
+                long totalSymbolSubscriptions = allSubs.values().stream()
+                    .mapToLong(sub -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> subMap = (Map<String, Object>) sub;
+                        return (Integer) subMap.getOrDefault("total_symbols", 0);
+                    })
+                    .sum();
+                
+                result.put("total_symbol_subscriptions", totalSymbolSubscriptions);
+            } else {
+                result.put("subscriptions", new HashMap<>());
+                result.put("total_users", 0);
+                result.put("total_symbol_subscriptions", 0);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la récupération de tous les abonnements: " + e.getMessage());
+            result.put("error", e.getMessage());
+        }
+        
+        return result;
     }
 }

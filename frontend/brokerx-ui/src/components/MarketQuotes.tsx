@@ -22,6 +22,11 @@ interface MarketQuotesProps {
 const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
   const [quotes, setQuotes] = useState<Record<string, MarketQuote>>({});
   const [subscribedSymbols] = useState<string[]>(['AAPL', 'TSLA', 'GOOGL']);
+  const [visibleSymbols, setVisibleSymbols] = useState<Record<string, boolean>>({
+    'AAPL': true,
+    'TSLA': true,
+    'GOOGL': true
+  });
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'disconnected'>('disconnected');
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +102,13 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
     });
   };
 
+  const toggleSymbolVisibility = (symbol: string) => {
+    setVisibleSymbols(prev => ({
+      ...prev,
+      [symbol]: !prev[symbol]
+    }));
+  };
+
   const getConnectionStatusDisplay = () => {
     const statusConfig = {
       connecting: { text: 'Connexion...', className: 'status-connecting' },
@@ -133,15 +145,33 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
         </div>
       </div>
 
+      {/* Contrôles de visibilité */}
+      <div className="visibility-controls">
+        <h3>Gérer mes abonnements :</h3>
+        <div className="toggle-buttons">
+          {subscribedSymbols.map(symbol => (
+            <button
+              key={symbol}
+              className={`toggle-btn ${visibleSymbols[symbol] ? 'subscribed' : 'unsubscribed'}`}
+              onClick={() => toggleSymbolVisibility(symbol)}
+            >
+              {symbol}: {visibleSymbols[symbol] ? 'Désabonner' : 'Abonner'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="quotes-grid">
-        {subscribedSymbols.map(symbol => {
+        {subscribedSymbols
+          .filter(symbol => visibleSymbols[symbol]) // Ne montrer que les symboles visibles
+          .map(symbol => {
           const quote = quotes[symbol];
           
           if (!quote) {
             return (
               <div key={symbol} className="quote-card loading">
                 <h3>{symbol}</h3>
-                <div className="loading-text">⏳ Loading...</div>
+                <div className="loading-text">Loading...</div>
               </div>
             );
           }
@@ -190,6 +220,7 @@ const MarketQuotes: React.FC<MarketQuotesProps> = ({ userToken }) => {
 
       {connectionStatus === 'connected' && (
         <div className="info-section">
+          <p>Affichage de {Object.values(visibleSymbols).filter(Boolean).length} symbole(s) sur {subscribedSymbols.length}</p>
         </div>
       )}
     </div>
