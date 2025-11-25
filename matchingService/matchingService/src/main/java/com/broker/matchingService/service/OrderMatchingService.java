@@ -263,14 +263,22 @@ public class OrderMatchingService {
         try {
             MatchingOrder existingOrder = matchingOrderRepository.findByOrderId(modifiedOrderDto.getOrderId());
             if (existingOrder != null && "PENDING".equals(existingOrder.getStatus())) {
+                // IMPORTANT: First cancel any existing scheduled trade for this order
+                ScheduledFuture<?> scheduledTrade = scheduledTrades.remove(existingOrder.getOrderId());
+                if (scheduledTrade != null && !scheduledTrade.isDone()) {
+                    boolean cancelled = scheduledTrade.cancel(false);
+                    System.out.println("Cancelled existing scheduled trade for order " + existingOrder.getOrderId() + ": " + cancelled);
+                }
+                
                 // Update order details
                 existingOrder.setQuantity(modifiedOrderDto.getQuantity());
                 existingOrder.setPrice(modifiedOrderDto.getPrice());
                 existingOrder.setRemainingQuantity(modifiedOrderDto.getQuantity());
                 matchingOrderRepository.save(existingOrder);
-                System.out.println("Order " + modifiedOrderDto.getOrderId() + " modified in matching engine");
+                System.out.println("Order " + modifiedOrderDto.getOrderId() + " modified in matching engine to price=" + 
+                                 modifiedOrderDto.getPrice() + ", quantity=" + modifiedOrderDto.getQuantity());
                 
-                // Try to match the modified order
+                // Try to match the modified order (this will create a new scheduled trade if needed)
                 matchOrder(existingOrder);
             } else if (existingOrder == null) {
                 System.out.println("Order " + modifiedOrderDto.getOrderId() + " not found in matching engine");

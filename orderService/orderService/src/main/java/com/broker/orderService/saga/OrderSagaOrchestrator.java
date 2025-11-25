@@ -14,6 +14,7 @@ import com.broker.orderService.infrastructure.client.ClientServiceClient;
 import com.broker.orderService.infrastructure.repo.OrderRepository;
 import com.broker.orderService.infrastructure.client.WalletServiceClient;
 import com.broker.orderService.service.OrderMessageProducer;
+import com.broker.orderService.service.OutboxService;
 
 /**
  * Saga Orchestrator pour gérer les transactions distribuées
@@ -39,6 +40,9 @@ public class OrderSagaOrchestrator {
     
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private OutboxService outboxService;
 
     /**
      * Saga pour l'annulation d'un ordre
@@ -78,26 +82,18 @@ public class OrderSagaOrchestrator {
             orderRepository.save(order);
             result.addStep("Order status updated to CANCELLED");
 
+            // Step 2b: Publier événement dans outbox (transactionnel)
+            String sagaId = "cancel-saga-" + orderId + "-" + System.currentTimeMillis();
+            outboxService.publishOrderCancelledBySaga(orderId, clientEmail, sagaId);
+            result.addStep("Cancellation event published to outbox");
+
             // Step 3: No wallet refund needed for PENDING orders
             // The wallet is only debited when order is FILLED, not when it's PENDING
             result.addStep("No wallet refund needed (order was never debited)");
 
-            // Step 4: Notify matching service to remove order from order book
-            try {
-                OrderDto orderDto = new OrderDto();
-                orderDto.setOrderId(String.valueOf(order.getOrderId()));
-                orderDto.setStockSymbol(order.getSymbol());
-                orderDto.setQuantity(order.getQuantity());
-                orderDto.setPrice(order.getPrice());
-                orderDto.setOrderType(order.getOrderType());
-                orderDto.setStatus("CANCELLED"); // Tell MatchingService this is a cancellation
-                // MatchingService will understand this is a cancelled order and remove it
-                orderMessageProducer.sendCancelledOrderToMatchingService(orderDto);
-                result.addStep("Matching service notified of cancellation");
-            } catch (Exception e) {
-                System.err.println("Warning: Failed to notify matching service: " + e.getMessage());
-                // Non-critical, order is already cancelled in our system
-            }
+            // Step 4: Event will be processed by OutboxService automatically
+            // OutboxService will notify MatchingService via RabbitMQ
+            result.addStep("Matching service will be notified via outbox pattern");
 
             // Step 5: Broadcast WebSocket notification to client
             try {
@@ -196,22 +192,14 @@ public class OrderSagaOrchestrator {
             orderRepository.save(order);
             result.addStep("Order updated: price=" + order.getPrice() + ", quantity=" + order.getQuantity());
 
-            // Step 5: Notify matching service about the modification
-            try {
-                OrderDto orderDto = new OrderDto();
-                orderDto.setOrderId(String.valueOf(order.getOrderId()));
-                orderDto.setStockSymbol(order.getSymbol());
-                orderDto.setQuantity(order.getQuantity());
-                orderDto.setPrice(order.getPrice());
-                orderDto.setOrderType(order.getOrderType());
-                orderDto.setStatus("MODIFIED"); // Tell MatchingService this is a modification
-                // MatchingService will update its OrderBook with new price/quantity
-                orderMessageProducer.sendModifiedOrderToMatchingService(orderDto);
-                result.addStep("Matching service notified of modification");
-            } catch (Exception e) {
-                System.err.println("Warning: Failed to notify matching service: " + e.getMessage());
-                // Non-critical, order is already updated in our system
-            }
+            // Step 4b: Publier événement dans outbox (transactionnel)
+            String sagaId = "modify-saga-" + orderId + "-" + System.currentTimeMillis();
+            outboxService.publishOrderModifiedBySaga(orderId, clientEmail, sagaId, newPrice, newQuantity);
+            result.addStep("Modification event published to outbox");
+
+            // Step 5: Event will be processed by OutboxService automatically
+            // OutboxService will notify MatchingService via RabbitMQ
+            result.addStep("Matching service will be notified via outbox pattern");
 
             // Step 6: Broadcast WebSocket notification to client
             try {

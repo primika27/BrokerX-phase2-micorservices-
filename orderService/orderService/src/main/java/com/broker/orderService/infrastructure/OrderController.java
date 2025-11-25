@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import com.broker.orderService.Application.OrderService;
 import com.broker.orderService.saga.OrderSagaOrchestrator;
 import com.broker.orderService.saga.SagaResult;
+import com.broker.orderService.service.OutboxService;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +46,9 @@ public class OrderController {
 
     @Autowired
     private OrderSagaOrchestrator sagaOrchestrator;
+
+    @Autowired
+    private OutboxService outboxService;
 
     @PostMapping("/placeOrder")
     public ResponseEntity<String> placeOrder(
@@ -189,6 +193,34 @@ public class OrderController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("error", "Failed to modify order: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    /**
+     * Debug endpoint to check outbox events
+     * GET /api/orders/debug/outbox
+     */
+    @GetMapping("/debug/outbox")
+    public ResponseEntity<Map<String, Object>> debugOutbox() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Get outbox stats
+            long totalEvents = outboxService.getTotalEventsCount();
+            long unprocessedEvents = outboxService.getUnprocessedEventsCount();
+            
+            response.put("totalEvents", totalEvents);
+            response.put("unprocessedEvents", unprocessedEvents);
+            response.put("message", "Outbox events are processed every 5 seconds automatically");
+            
+            // Get recent events details
+            var recentEvents = outboxService.getRecentEvents(5);
+            response.put("recentEvents", recentEvents);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", "Debug failed: " + e.getMessage());
             return ResponseEntity.internalServerError().body(response);
         }
     }
