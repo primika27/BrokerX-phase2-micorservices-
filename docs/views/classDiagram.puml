@@ -1,88 +1,210 @@
 @startuml classDiagram
-title BrokerX - Simplified Class Diagram (Microservices Architecture)
+title BrokerX - Class Diagram (Microservices Architecture)
 
-package "Gateway Service" {
-    class ApiGateway
-    class JwtAuthFilter
-}
+!define ENTITY class
+!define SERVICE class
+!define ENUM enum
 
 package "AuthService" {
-    class UserCredential {
-        -email : String
-        -passwordHash : String
-        -status : UserStatus
+    ENTITY UserCredential {
+        - id : Long
+        - email : String
+        - passwordHash : String
+        - status : UserStatus
+        - verificationToken : String
+        - isVerified : boolean
+        - otpExpiry : LocalDateTime
+        + validatePassword(password : String) : boolean
+        + generateOTP() : String
+        + isOTPValid(otp : String) : boolean
     }
     
-    enum UserStatus {
-        PENDING, ACTIVE, INACTIVE
+    ENUM UserStatus {
+        PENDING
+        ACTIVE
+        INACTIVE
     }
 }
 
 package "ClientService" {
-    class Client {
-        -clientId : Long
-        -email : String
-        -name : String
+    ENTITY Client {
+        - clientId : Long
+        - name : String
+        - email : String
+        - isVerified : boolean
+        - generateToken() : String
     }
-    
-    interface ClientServiceClient
 }
 
 package "WalletService" {
-    class Wallet {
-        -ownerEmail : String
-        -balance : BigDecimal
+    ENTITY Wallet {
+        - walletId : Long
+        - ownerEmail : String
+        - balance : BigDecimal
+        + credit(amount : BigDecimal) : void
+        + debit(amount : BigDecimal) : boolean
+        + hasBalance(amount : BigDecimal) : boolean
     }
     
-    interface WalletServiceClient
+    ENTITY Transaction {
+        - transactionId : Long
+        - orderId : Long
+        - type : TransactionType
+        - amount : BigDecimal
+        - dateTransaction : LocalDateTime
+        - description : String
+    }
+    
+    ENUM TransactionType {
+        ORDER
+        DEPOSIT
+        WITHDRAWAL
+    }
 }
 
 package "OrderService" {
-    class Order {
-        -orderId : Long
-        -symbol : String
-        -price : BigDecimal
-        -quantity : Integer
-        -status : OrderStatus
-        -orderType : OrderType
+    ENTITY Order {
+        - orderId : Long
+        - clientId : Long
+        - symbol : String
+        - price : BigDecimal
+        - quantity : Integer
+        - status : OrderStatus
+        - orderType : OrderType
+        - timestamp : LocalDateTime
+        + calculateTotal() : BigDecimal
+        + canModify() : boolean
     }
     
-    class OrderSagaOrchestrator
-    class MatchingConsumer
-    
-    enum OrderStatus {
-        PENDING, FILLED, CANCELLED
+    ENTITY OutboxEvent {
+        - id : Long
+        - aggregateId : String
+        - eventType : String
+        - payload : String
+        - createdAt : LocalDateTime
+        - processedAt : LocalDateTime
+        - retryCount : int
+        - maxRetries : int
+        - nextRetryAt : LocalDateTime
+        + markAsProcessed() : void
+        + incrementRetryCount() : void
+        + canRetry() : boolean
     }
     
-    enum OrderType {
-        BUY, SELL
+    SERVICE OrderSagaOrchestrator {
+        + cancelOrderSaga(orderId, email) : SagaResult
+        + modifyOrderSaga(orderId, email, newPrice, newQuantity) : SagaResult
+    }
+    
+    SERVICE OutboxService {
+        + publishOrderCancelledBySaga() : void
+        + publishOrderModifiedBySaga() : void
+        + processOutboxEvents() : void
+    }
+    
+    ENUM OrderStatus {
+        PENDING
+        FILLED
+        CANCELLED
+        FAILED
+    }
+    
+    ENUM OrderType {
+        BUY
+        SELL
     }
 }
 
 package "MatchingService" {
-    class MatchingOrder {
-        -orderId : String
-        -stockSymbol : String
-        -quantity : Integer
-        -price : BigDecimal
-        -orderType : OrderType
+    ENTITY MatchingOrder {
+        - id : Long
+        - orderId : Long
+        - stockSymbol : String
+        - quantity : Integer
+        - remainingQuantity : Integer
+        - price : BigDecimal
+        - orderType : OrderType
+        - createdAt : LocalDateTime
+        - status : MatchingStatus
+        + isFullyMatched() : boolean
+        + calculateMatch() : MatchResult
     }
     
-    class OrderMatchingService
-    class TradeDto
+    SERVICE OrderMatchingService {
+        + processNewOrder() : void
+        + cancelOrder() : void
+        + modifyOrder() : void
+        + executeTrade() : TradeResult
+    }
+    
+    ENUM MatchingStatus {
+        PENDING
+        PARTIALLY_MATCHED
+        FULLY_MATCHED
+        CANCELLED
+    }
 }
 
 package "MarketDataService" {
-    class MarketQuote {
-        -symbol : String
-        -bid : Double
-        -ask : Double
-        -lastPrice : Double
+    ENTITY MarketQuote {
+        - symbol : String
+        - bid : Double
+        - ask : Double
+        - lastPrice : Double
+        - timestamp : LocalDateTime
+        + updatePrice() : void
+        + getBidAskSpread() : Double
     }
     
-    class MarketDataService
+    SERVICE MarketDataService {
+        + publishMarketData() : void
+        + getLatestQuote() : MarketQuote
+    }
 }
 
+package "GatewayService" {
+    SERVICE ApiGateway {
+        + routeRequest() : void
+        + authenticate() : boolean
+    }
+    
+    SERVICE JwtAuthFilter {
+        + validateToken() : boolean
+        + extractClaims() : String
+    }
+}
+
+' Core Business Relationships
+Client ||--o{ Order : "places orders"
+UserCredential ||--|| Client : "authenticates user"
+Client ||--|| Wallet : "owns wallet"
+Wallet ||--o{ Transaction : "records transactions"
+Order ||--o{ Transaction : "generates transactions"
+
+' Order Processing Flow
+Order ||--|| MatchingOrder : "converts to matching order"
+MatchingOrder ||--|| OrderMatchingService : "processed by matching engine"
+
+' Saga + Outbox Pattern Architecture
+OrderSagaOrchestrator --> Order : "orchestrates: modify(), cancel()"
+OrderSagaOrchestrator --> OutboxService : "publishes events via outbox"
+OutboxService --> OutboxEvent : "creates transactional events"
+OutboxEvent --> OrderMatchingService : "triggers async processing"
+
+' External Service Communications
+OrderSagaOrchestrator ..> Client : "validates client via ClientService"
+OrderSagaOrchestrator ..> Wallet : "checks balance via WalletService"
+
+' Market Data Integration
+MarketQuote --> OrderMatchingService : "provides real-time pricing"
+OrderMatchingService --> MarketQuote : "updates market data"
+
+' Gateway and Authentication
+ApiGateway --> JwtAuthFilter : "delegates authentication"
+JwtAuthFilter --> UserCredential : "validates credentials"
+ApiGateway ..> OrderSagaOrchestrator : "routes order requests"
+
+@enduml
 ' Essential relationships
 ApiGateway --> JwtAuthFilter
 UserCredential --> UserStatus
@@ -97,12 +219,44 @@ ApiGateway --> WalletService
 ApiGateway --> OrderService
 ApiGateway --> MarketDataService
 
-OrderSagaOrchestrator --> WalletServiceClient
-OrderSagaOrchestrator --> ClientServiceClient
-MatchingConsumer --> WalletServiceClient
-MatchingConsumer --> ClientServiceClient
+' Saga + Outbox Pattern relationships
+OrderSagaOrchestrator --> OutboxService : uses
+OrderSagaOrchestrator --> WalletServiceClient : calls
+OrderSagaOrchestrator --> ClientServiceClient : calls
+OrderSagaOrchestrator --> SagaResult : creates
 
-OrderService --> MatchingService : RabbitMQ
+OutboxService --> OutboxEventRepository : uses
+OutboxService --> OutboxEvent : manages
+OutboxService --> OrderMessageProducer : delegates to
+OutboxEvent --> OutboxEventRepository : persisted by
+
+' Scheduled Processing (Outbox Pattern)
+note right of OutboxService
+    @Scheduled(fixedDelay = 5000)
+    Processes unprocessed events
+    with retry logic and 
+    exponential backoff
+end note
+
+' Matching Service Integration
+OrderService --> MatchingService : RabbitMQ via Outbox
 MatchingService --> OrderService : RabbitMQ
+RabbitMQConsumer --> OrderMatchingService : delegates to
+
+MatchingConsumer --> WalletServiceClient : calls
+MatchingConsumer --> ClientServiceClient : calls
+
+' Hybrid Pattern Notes
+note top of OrderSagaOrchestrator
+    Saga Orchestrator coordinates
+    business logic and uses 
+    Outbox for reliable messaging
+end note
+
+note top of OutboxService
+    Transactional event persistence
+    with guaranteed delivery
+    and automatic retry
+end note
 
 @enduml

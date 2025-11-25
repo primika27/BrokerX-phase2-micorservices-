@@ -1,5 +1,5 @@
 @startuml rdcu_uc06_modify
-title RDCU - UC06: Modification d'un ordre existant
+title RDCU - UC06: Modification d'un ordre existant (avec Outbox Pattern)
 
 participant ":OrderController" as Controller
 participant ":OrderSagaOrchestrator" as Saga
@@ -7,7 +7,8 @@ participant ":OrderRepository" as OrderRepo
 participant "order:Order" as Order
 participant ":WalletServiceClient" as WalletClient
 participant ":ClientServiceClient" as ClientClient
-participant ":OrderMessageProducer" as Producer
+participant ":OutboxService" as OutboxService
+participant ":OutboxEventRepository" as OutboxRepo
 
 Controller -> Saga : modifyOrderSaga(orderId, email, newPrice, newQuantity)
 activate Saga
@@ -42,14 +43,49 @@ Saga -> Order : setPrice(newPrice)
 Saga -> Order : setQuantity(newQuantity)
 Saga -> OrderRepo : save(order)
 
-create participant "orderDto:OrderDto" as OrderDto
-Saga -> OrderDto : new OrderDto()
-Saga -> OrderDto : setStatus("MODIFIED")
+' Outbox Pattern Integration
+Saga -> Saga : generateSagaId("modify-saga-" + orderId + "-" + timestamp)
+Saga -> OutboxService : publishOrderModifiedBySaga(orderId, email, sagaId, newPrice, newQuantity)
+activate OutboxService
 
-Saga -> Producer : sendModifiedOrderToMatchingService(orderDto)
+note right of OutboxService : Creates transactional outbox event\nwithin same transaction as order update
 
-Saga --> Controller : SagaResult(true)
+create participant "outboxEvent:OutboxEvent" as OutboxEvent
+OutboxService -> OutboxEvent : new OutboxEvent(sagaId, "SagaOrderModified", payloadJson)
+OutboxService -> OutboxRepo : save(outboxEvent)
+OutboxService --> Saga : void
+deactivate OutboxService
+
+note over OutboxService
+    Scheduled processing (@Scheduled)
+    processes events every 5 seconds
+end note
+
+Saga --> Controller : SagaResult(true, "Modification event published to outbox")
 deactivate Saga
+
+' Asynchronous outbox processing (separate thread)
+activate OutboxService
+OutboxService -> OutboxRepo : findUnprocessedEventsReadyForRetry()
+OutboxRepo --> OutboxService : List<OutboxEvent>
+
+loop for each unprocessed event
+    OutboxService -> OutboxService : processEvent(outboxEvent)
+    
+    create participant "orderDto:OrderDto" as OrderDto
+    OutboxService -> OrderDto : new OrderDto()
+    OutboxService -> OrderDto : setStatus("MODIFIED")
+    OutboxService -> OrderDto : setPrice(modifiedPrice)
+    OutboxService -> OrderDto : setQuantity(modifiedQuantity)
+    
+    create participant ":OrderMessageProducer" as Producer
+    OutboxService -> Producer : sendModifiedOrderToMatchingService(orderDto)
+    
+    OutboxService -> OutboxEvent : markAsProcessed()
+    OutboxService -> OutboxRepo : save(outboxEvent)
+end
+
+deactivate OutboxService
 
 @enduml
 

@@ -1,5 +1,5 @@
 @startuml rdcu_uc06_cancel
-title RDCU - UC06: Annulation d'un ordre existant
+title RDCU - UC06: Annulation d'un ordre existant (avec Outbox Pattern)
 
 participant ":OrderController" as Controller
 participant ":OrderSagaOrchestrator" as Saga
@@ -7,7 +7,8 @@ participant ":OrderRepository" as OrderRepo
 participant "order:Order" as Order
 participant ":WalletServiceClient" as WalletClient
 participant ":ClientServiceClient" as ClientClient
-participant ":OrderMessageProducer" as Producer
+participant ":OutboxService" as OutboxService
+participant ":OutboxEventRepository" as OutboxRepo
 
 Controller -> Saga : cancelOrderSaga(orderId, email)
 activate Saga
@@ -24,21 +25,51 @@ end
 Saga -> Order : setStatus(CANCELLED)
 Saga -> OrderRepo : save(order)
 
-' CORRECTION 1 : Utilisation de la syntaxe note / end note pour le multi-lignes
 note right of Saga 
   No wallet refund needed
   (PENDING orders are never debited)
 end note
 
-' CORRECTION 2 : Suppression du mot clé "participant" après create
-create "orderDto:OrderDto" as OrderDto
-Saga -> OrderDto : new OrderDto()
-Saga -> OrderDto : setStatus("CANCELLED")
+' Outbox Pattern Integration
+Saga -> Saga : generateSagaId("cancel-saga-" + orderId + "-" + timestamp)
+Saga -> OutboxService : publishOrderCancelledBySaga(orderId, email, sagaId)
+activate OutboxService
 
-Saga -> Producer : sendCancelledOrderToMatchingService(orderDto)
+note right of OutboxService : Creates transactional outbox event\nwithin same transaction as order update
 
-Saga --> Controller : SagaResult(true)
+create participant "outboxEvent:OutboxEvent" as OutboxEvent
+OutboxService -> OutboxEvent : new OutboxEvent(sagaId, "SagaOrderCancelled", payloadJson)
+OutboxService -> OutboxRepo : save(outboxEvent)
+OutboxService --> Saga : void
+deactivate OutboxService
+
+note over OutboxService
+    Scheduled processing (@Scheduled)
+    processes events every 5 seconds
+end note
+
+Saga --> Controller : SagaResult(true, "Cancellation event published to outbox")
 deactivate Saga
 
-' CORRECTION 3 : Une seule fin
+' Asynchronous outbox processing (separate thread)
+activate OutboxService
+OutboxService -> OutboxRepo : findUnprocessedEventsReadyForRetry()
+OutboxRepo --> OutboxService : List<OutboxEvent>
+
+loop for each unprocessed event
+    OutboxService -> OutboxService : processEvent(outboxEvent)
+    
+    create participant "orderDto:OrderDto" as OrderDto
+    OutboxService -> OrderDto : new OrderDto()
+    OutboxService -> OrderDto : setStatus("CANCELLED")
+    
+    create participant ":OrderMessageProducer" as Producer
+    OutboxService -> Producer : sendCancelledOrderToMatchingService(orderDto)
+    
+    OutboxService -> OutboxEvent : markAsProcessed()
+    OutboxService -> OutboxRepo : save(outboxEvent)
+end
+
+deactivate OutboxService
+
 @enduml

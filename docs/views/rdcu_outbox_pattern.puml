@@ -1,0 +1,96 @@
+@startuml rdcu_outbox_pattern
+title RDCU - Outbox Pattern: Transactional Event Publishing
+
+participant ":OrderSagaOrchestrator" as Saga
+participant ":OutboxService" as OutboxService
+participant ":OutboxEventRepository" as OutboxRepo
+participant "outboxEvent:OutboxEvent" as OutboxEvent
+participant ":OrderMessageProducer" as Producer
+participant ":RabbitTemplate" as RabbitMQ
+participant ":OrderMatchingService" as MatchingService
+
+note over Saga, OutboxRepo : Synchronous Transaction Phase
+activate Saga
+
+Saga -> OutboxService : publishOrderModifiedBySaga(orderId, clientEmail, sagaId, newPrice, newQuantity)
+activate OutboxService
+
+note right of OutboxService : Within same database transaction\nas order update
+
+OutboxService -> OutboxService : createEventPayload(eventData)
+create OutboxEvent
+OutboxService -> OutboxEvent : new OutboxEvent(sagaId, "SagaOrderModified", payloadJson)
+OutboxService -> OutboxEvent : setCreatedAt(LocalDateTime.now())
+OutboxService -> OutboxEvent : setMaxRetries(3)
+
+OutboxService -> OutboxRepo : save(outboxEvent)
+activate OutboxRepo
+OutboxRepo --> OutboxService : savedEvent
+deactivate OutboxRepo
+
+OutboxService --> Saga : void
+deactivate OutboxService
+
+note over Saga, OutboxRepo : Transaction committed - event persisted
+
+deactivate Saga
+
+note over OutboxService, MatchingService : Asynchronous Processing Phase (@Scheduled every 5s)
+
+activate OutboxService
+OutboxService -> OutboxService : processOutboxEvents() [Scheduled]
+
+OutboxService -> OutboxRepo : findUnprocessedEventsReadyForRetry(LocalDateTime.now())
+activate OutboxRepo
+OutboxRepo --> OutboxService : List<OutboxEvent>
+deactivate OutboxRepo
+
+loop for each unprocessed event
+    OutboxService -> OutboxService : processEvent(event)
+    
+    alt event.getEventType() == "SagaOrderModified"
+        OutboxService -> OutboxService : parsePayload(event.getPayload())
+        
+        create participant "orderDto:OrderDto" as OrderDto
+        OutboxService -> OrderDto : new OrderDto()
+        OutboxService -> OrderDto : setOrderId(orderId)
+        OutboxService -> OrderDto : setStatus("MODIFIED")
+        OutboxService -> OrderDto : setPrice(modifiedPrice)
+        OutboxService -> OrderDto : setQuantity(modifiedQuantity)
+        
+        OutboxService -> Producer : sendModifiedOrderToMatchingService(orderDto)
+        activate Producer
+        
+        Producer -> RabbitMQ : convertAndSend(ORDER_QUEUE, orderDto)
+        activate RabbitMQ
+        RabbitMQ --> MatchingService : OrderDto [RabbitMQ Message]
+        deactivate RabbitMQ
+        
+        Producer --> OutboxService : void
+        deactivate Producer
+        
+        OutboxService -> OutboxEvent : markAsProcessed()
+        OutboxService -> OutboxEvent : setProcessedAt(LocalDateTime.now())
+        OutboxService -> OutboxRepo : save(outboxEvent)
+        
+        note right of OutboxService : Event successfully processed\nand marked as completed
+        
+    else processing failed
+        OutboxService -> OutboxEvent : incrementRetryCount()
+        OutboxService -> OutboxEvent : calculateNextRetryAt() [Exponential backoff]
+        OutboxService -> OutboxRepo : save(outboxEvent)
+        
+        note right of OutboxService : Event will be retried later\nbased on exponential backoff
+    end
+end
+
+deactivate OutboxService
+
+note over MatchingService : Message received and processed\nin MatchingService
+
+activate MatchingService
+MatchingService -> MatchingService : modifyOrder(orderDto)
+note right of MatchingService : Cancels existing scheduled trade\nand creates new one with updated price
+deactivate MatchingService
+
+@enduml

@@ -1,5 +1,5 @@
 @startuml rdcu_uc07_matching_filled
-title RDCU - UC07: Appariement d'ordre jusqu'à exécution
+title RDCU - UC07: Appariement d'ordre jusqu'à exécution (avec gestion modifications Outbox)
 
 participant ":RabbitMQConsumer" as Consumer
 participant ":OrderMatchingService" as OrderMatching
@@ -7,49 +7,86 @@ participant ":MatchingOrderRepository" as MatchingRepo
 participant "newOrder:MatchingOrder" as NewOrder
 participant "counterOrder:MatchingOrder" as CounterOrder
 participant ":RabbitTemplate" as RabbitMQ
+participant ":ConcurrentHashMap<String,ScheduledFuture<?>>" as ScheduledTrades
 
 Consumer -> Consumer : receiveOrder(OrderDto)
 activate Consumer
 
-Consumer -> OrderMatching : processNewOrder(orderDto)
-activate OrderMatching
+alt status == "CANCELLED"
+    Consumer -> OrderMatching : cancelOrder(orderId)
+    note right of OrderMatching : Cancels scheduled trades\nif any exist
+else status == "MODIFIED"
+    Consumer -> OrderMatching : modifyOrder(orderDto)
+    activate OrderMatching
+    
+    OrderMatching -> MatchingRepo : findByOrderId(orderId)
+    MatchingRepo --> OrderMatching : existingOrder
+    
+    alt existingOrder != null && status == "PENDING"
+        ' Cancel existing scheduled trade first
+        OrderMatching -> ScheduledTrades : remove(orderId)
+        ScheduledTrades --> OrderMatching : oldScheduledTrade
+        
+        alt oldScheduledTrade exists
+            OrderMatching -> ScheduledTrades : oldScheduledTrade.cancel(false)
+            note right of OrderMatching : Cancel previous trade\nbefore applying modification
+        end
+        
+        OrderMatching -> NewOrder : setQuantity(newQuantity)
+        OrderMatching -> NewOrder : setPrice(newPrice)
+        OrderMatching -> NewOrder : setRemainingQuantity(newQuantity)
+        OrderMatching -> MatchingRepo : save(existingOrder)
+        
+        ' Try to match modified order
+        OrderMatching -> OrderMatching : matchOrder(existingOrder)
+    end
+    
+    deactivate OrderMatching
+else ' New order processing
+    Consumer -> OrderMatching : processNewOrder(orderDto)
+    activate OrderMatching
 
-create NewOrder
-OrderMatching -> NewOrder : new MatchingOrder(orderDto)
-OrderMatching -> MatchingRepo : save(newOrder)
+    create NewOrder
+    OrderMatching -> NewOrder : new MatchingOrder(orderDto)
+    OrderMatching -> MatchingRepo : save(newOrder)
 
-OrderMatching -> MatchingRepo : findByStockSymbolAndOrderTypeAndStatusOrderByPrice(symbol, counterType, "PENDING")
-MatchingRepo --> OrderMatching : potentialMatches
+    OrderMatching -> MatchingRepo : findByStockSymbolAndOrderTypeAndStatusOrderByPrice(symbol, counterType, "PENDING")
+    MatchingRepo --> OrderMatching : potentialMatches
 
-alt no counter-order found
-    OrderMatching -> OrderMatching : createSyntheticCounterOrder(newOrder)
-    OrderMatching --> CounterOrder : marketMakerOrder
-    OrderMatching -> MatchingRepo : save(marketMakerOrder)
+    alt no counter-order found
+        OrderMatching -> OrderMatching : createSyntheticCounterOrder(newOrder)
+        OrderMatching --> CounterOrder : marketMakerOrder
+        OrderMatching -> MatchingRepo : save(marketMakerOrder)
+    end
+
+    OrderMatching -> OrderMatching : executeTrade(newOrder, counterOrder, quantity)
+    
+    note right of OrderMatching : Schedules trade execution\nwith 10-second delay\nStores in ScheduledTrades map
+
+    OrderMatching -> ScheduledTrades : put(orderId, scheduledFuture)
+    note over ScheduledTrades : Enables cancellation\nof pending trades
+
+    OrderMatching -> NewOrder : setStatus("FILLED")
+    OrderMatching -> CounterOrder : setRemainingQuantity(remaining - quantity)
+    OrderMatching -> MatchingRepo : save(newOrder)
+    OrderMatching -> MatchingRepo : save(counterOrder)
+
+    create participant "trade:Trade" as Trade
+    OrderMatching -> Trade : new Trade(tradeId, buyOrderId, sellOrderId, symbol, quantity, price, timestamp)
+
+    OrderMatching -> RabbitMQ : convertAndSend(RabbitMQConfig.MATCHING_QUEUE, trade)
+    activate RabbitMQ
+    note right of RabbitMQ
+        Publishes trade event to
+        OrderService for processing
+    end note
+    RabbitMQ --> OrderMatching : void
+    deactivate RabbitMQ
+
+    deactivate OrderMatching
 end
 
-OrderMatching -> OrderMatching : executeTrade(newOrder, counterOrder, quantity)
-
-note right of OrderMatching : Schedules trade execution\nwith 10-second delay
-
-OrderMatching -> NewOrder : setStatus("FILLED")
-OrderMatching -> CounterOrder : setRemainingQuantity(remaining - quantity)
-OrderMatching -> MatchingRepo : save(newOrder)
-OrderMatching -> MatchingRepo : save(counterOrder)
-
-create participant "trade:Trade" as Trade
-OrderMatching -> Trade : new Trade(tradeId, buyOrderId, sellOrderId, symbol, quantity, price, timestamp)
-
-OrderMatching -> RabbitMQ : convertAndSend(RabbitMQConfig.MATCHING_QUEUE, trade)
-activate RabbitMQ
-note right of RabbitMQ
-    Publishes trade event to
-    OrderService for processing
-end note
-RabbitMQ --> OrderMatching : void
-deactivate RabbitMQ
-
 OrderMatching --> Consumer : void
-deactivate OrderMatching
 deactivate Consumer
 
 @enduml
