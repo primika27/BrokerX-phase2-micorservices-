@@ -219,7 +219,6 @@ public class OrderSagaOrchestrator {
                 result.addStep("Email notification sent to client");
             } catch (Exception e) {
                 System.err.println("Failed to send email notification: " + e.getMessage());
-                
             }
             
             result.setSuccess(true);
