@@ -19,6 +19,60 @@ const dbQueryLatency = new Trend('db_query_latency');
 const INSTANCE_COUNT = __ENV.INSTANCES || '2';
 const BASE_URL = 'http://localhost:8080';
 
+// ============================================================================
+// SYSTÈME D'AUTHENTIFICATION JWT
+// ============================================================================
+let authToken = null;
+const TEST_USER = {
+    username: 'loadtest',
+    email: 'loadtest@brokerx.com',
+    password: 'LoadTest2024!'
+};
+
+function createTestUser() {
+    const payload = JSON.stringify(TEST_USER);
+    
+    const response = http.post(`${BASE_URL}/api/auth/register`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    
+    console.log(`User creation: ${response.status}`);
+    return response.status;
+}
+
+function authenticate() {
+    const payload = JSON.stringify({
+        username: TEST_USER.username,
+        password: TEST_USER.password
+    });
+    
+    const response = http.post(`${BASE_URL}/api/auth/login`, payload, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.status === 200) {
+        const body = JSON.parse(response.body);
+        authToken = body.token;
+        console.log(`✅ Authentication successful - Token: ${authToken ? authToken.substring(0, 20) + '...' : 'null'}`);
+        return true;
+    } else {
+        console.log(`❌ Authentication failed: ${response.status} - ${response.body}`);
+        return false;
+    }
+}
+
+function getAuthHeaders() {
+    if (authToken) {
+        return {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+        };
+    }
+    return {
+        'Content-Type': 'application/json'
+    };
+}
+
 export const options = {
     scenarios: {
         realistic_load: {
@@ -84,12 +138,12 @@ const criticalEndpoints = [
         expectedStatus: [200, 500]
     },
     
-    // === ENDPOINTS DB QUERIES (publics, coûteux, CACHABLES) ===
+    // === ENDPOINTS DB QUERIES (avec auth, coûteux, CACHABLES) ===
     {
         path: '/api/clients/getByEmail',
         method: 'GET',
         weight: 25,
-        requiresAuth: false,
+        requiresAuth: true,
         cacheable: true,
         category: 'db_query',
         description: 'Client Lookup by Email (DB query)',
@@ -107,7 +161,7 @@ const criticalEndpoints = [
         path: '/api/clients/getEmailById',
         method: 'GET',
         weight: 25,
-        requiresAuth: false,
+        requiresAuth: true,
         cacheable: true,
         category: 'db_query',
         description: 'Email Lookup by ClientID (DB query)',
@@ -123,7 +177,7 @@ const criticalEndpoints = [
         path: '/api/wallet/test',
         method: 'GET',
         weight: 15,
-        requiresAuth: false,
+        requiresAuth: true,
         cacheable: false,
         category: 'service_test',
         description: 'Wallet Service Test',
@@ -202,20 +256,34 @@ export function setup() {
     const clientTest = http.get(`${BASE_URL}/api/clients/test`);
     console.log(`  ${clientTest.status === 200 ? '✅' : '⚠️'} ClientService: ${clientTest.status}`);
     
+    // Authentification
+    console.log('');
+    console.log('🔑 Configuration de l\'authentification...');
+    
+    // Créer utilisateur de test si nécessaire
+    createTestUser();
+    
+    // S'authentifier
+    const authSuccess = authenticate();
+    if (!authSuccess) {
+        console.log('⚠️ Authentification échouée - certains tests pourraient échouer');
+    }
+    
     console.log('');
     console.log('🚀 Démarrage du test de charge...');
     console.log('');
     
     return { 
         startTime: Date.now(),
-        testId: `loadbalancing-${INSTANCE_COUNT}instances-${Date.now()}`
+        testId: `loadbalancing-${INSTANCE_COUNT}instances-${Date.now()}`,
+        authToken: authToken
     };
 }
 
 // ============================================================================
 // MAIN TEST FUNCTION
 // ============================================================================
-export default function() {
+export default function(data) {
     const endpoint = selectEndpoint();
     
     // Construire l'URL
@@ -229,20 +297,18 @@ export default function() {
             .join('&');
         url += `?${queryString}`;
     }
-    
-    // Headers de base
-    const headers = {
+
+    // Headers avec authentification
+    let headers = {
         'Accept': 'application/json',
         'User-Agent': 'k6-brokerx-loadtest',
         'X-Test-ID': `lb-${INSTANCE_COUNT}instances`,
         'X-Endpoint-Category': endpoint.category
     };
-    
-    // Ajouter header d'auth si requis (pour le moment sans token, testera 401)
-    if (endpoint.requiresAuth) {
-        // Pour baseline: laisser sans token pour mesurer sans cache
-        // Après cache: ajouter vrais tokens
-        headers['X-Authenticated-User'] = 'test-user@brokerx.com';
+
+    // Ajouter token d'authentification si requis
+    if (endpoint.requiresAuth && data && data.authToken) {
+        headers['Authorization'] = `Bearer ${data.authToken}`;
     }
     
     // Faire la requête

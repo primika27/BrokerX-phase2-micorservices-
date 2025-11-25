@@ -26,15 +26,15 @@ export let options = {
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const API_URL = `${BASE_URL}/api`;
 
-// Stress test endpoints
+// Stress test endpoints (endpoints simples sans auth)
 const STRESS_ENDPOINTS = [
-  { path: '/market/quotes/AAPL', weight: 0.4 },
-  { path: '/orders/recent', weight: 0.3 },
-  { path: '/wallet/transactions', weight: 0.2 },
-  { path: '/auth/validate', weight: 0.1 },
+  { path: '/health', weight: 0.4 },
+  { path: '/api/auth/test', weight: 0.3 },
+  { path: '/api/clients/test', weight: 0.2 },
+  { path: '/actuator/health', weight: 0.1 },
 ];
 
 export function setup() {

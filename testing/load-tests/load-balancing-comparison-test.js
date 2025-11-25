@@ -30,7 +30,7 @@ export let options = {
 };
 
 const INSTANCE_COUNT = __ENV.INSTANCES || '1';
-const BASE_URL = 'http://localhost:80';
+const BASE_URL = 'http://localhost:8080';
 
 // Variables de configuration pour le test
 const ACTUATOR_AVAILABLE = true; // Flag pour tester les endpoints actuator
