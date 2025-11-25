@@ -91,9 +91,26 @@ public class OrderSagaOrchestrator {
             // The wallet is only debited when order is FILLED, not when it's PENDING
             result.addStep("No wallet refund needed (order was never debited)");
 
-            // Step 4: Event will be processed by OutboxService automatically
-            // OutboxService will notify MatchingService via RabbitMQ
-            result.addStep("Matching service will be notified via outbox pattern");
+            // Step 4: Notify MatchingService IMMEDIATELY (synchronous) to cancel scheduled trade
+        
+            try {
+                OrderDto orderDto = new OrderDto();
+                orderDto.setOrderId(String.valueOf(order.getOrderId()));
+                orderDto.setStockSymbol(order.getSymbol());
+                orderDto.setQuantity(order.getQuantity());
+                orderDto.setPrice(order.getPrice());
+                orderDto.setOrderType(order.getOrderType());
+                orderDto.setStatus("CANCELLED");
+                
+                orderMessageProducer.sendCancelledOrderToMatchingService(orderDto);
+                result.addStep("Cancellation sent IMMEDIATELY to matching service");
+            } catch (Exception e) {
+                System.err.println("CRITICAL: Failed to notify matching service: " + e.getMessage());
+                throw new RuntimeException("Cannot cancel order - matching service notification failed", e);
+            }
+            
+            // Step 5: Event will ALSO be processed by OutboxService (backup)
+            result.addStep("Outbox event created for reliability");
 
             // Step 5: Broadcast WebSocket notification to client
             try {
@@ -197,9 +214,26 @@ public class OrderSagaOrchestrator {
             outboxService.publishOrderModifiedBySaga(orderId, clientEmail, sagaId, newPrice, newQuantity);
             result.addStep("Modification event published to outbox");
 
-            // Step 5: Event will be processed by OutboxService automatically
-            // OutboxService will notify MatchingService via RabbitMQ
-            result.addStep("Matching service will be notified via outbox pattern");
+            // Step 5: Notify MatchingService IMMEDIATELY (synchronous) to update scheduled trade
+            // Critical: Must happen before the 10-second trade execution delay
+            try {
+                OrderDto orderDto = new OrderDto();
+                orderDto.setOrderId(String.valueOf(order.getOrderId()));
+                orderDto.setStockSymbol(order.getSymbol());
+                orderDto.setQuantity(order.getQuantity());
+                orderDto.setPrice(order.getPrice());
+                orderDto.setOrderType(order.getOrderType());
+                orderDto.setStatus("MODIFIED");
+                
+                orderMessageProducer.sendModifiedOrderToMatchingService(orderDto);
+                result.addStep("Modification sent IMMEDIATELY to matching service");
+            } catch (Exception e) {
+                System.err.println("CRITICAL: Failed to notify matching service: " + e.getMessage());
+                throw new RuntimeException("Cannot modify order - matching service notification failed", e);
+            }
+            
+            // Step 6: Event will ALSO be processed by OutboxService for reliability (backup)
+            result.addStep("Outbox event created for reliability");
 
             // Step 6: Broadcast WebSocket notification to client
             try {

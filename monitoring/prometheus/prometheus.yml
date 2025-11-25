@@ -28,45 +28,52 @@ scrape_configs:
     scrape_interval: 15s
     metrics_path: '/metrics'
 
-  # BrokerX Microservices - Load Balanced
+  # BrokerX Microservices - Services réels
   - job_name: 'brokerx-gateway'
     static_configs:
-      - targets: ['host.docker.internal:8080', 'host.docker.internal:8081']
+      - targets: ['host.docker.internal:8080']
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s
 
   - job_name: 'brokerx-auth-service'
     static_configs:
-      - targets: ['host.docker.internal:8101', 'host.docker.internal:8102']
+      - targets: ['host.docker.internal:8081']
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s
 
   - job_name: 'brokerx-client-service'
     static_configs:
-      - targets: ['host.docker.internal:8201', 'host.docker.internal:8202']
+      - targets: ['host.docker.internal:8082']
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s
 
   - job_name: 'brokerx-wallet-service'
     static_configs:
-      - targets: ['host.docker.internal:8301', 'host.docker.internal:8302']
+      - targets: ['host.docker.internal:8083']
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s
 
   - job_name: 'brokerx-order-service'
     static_configs:
-      - targets: ['host.docker.internal:8401', 'host.docker.internal:8402']
+      - targets: ['host.docker.internal:8084']
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s
 
   - job_name: 'brokerx-matching-service'
     static_configs:
-      - targets: ['host.docker.internal:8501']
+      - targets: ['host.docker.internal:8085']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: 'brokerx-market-data-service'
+    static_configs:
+      - targets: ['host.docker.internal:8086']
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s

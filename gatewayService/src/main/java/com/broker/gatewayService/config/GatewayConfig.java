@@ -19,7 +19,7 @@ public class GatewayConfig {
     public RouteLocator routes(RouteLocatorBuilder builder) {
         return builder.routes()
             // Auth service routes (public endpoints without JWT filter)
-            .route("auth_service_public", r -> r.path("/api/auth/login", "/api/auth/register", "/api/auth/verify**", "/api/auth/test")
+            .route("auth_service_public", r -> r.path("/api/auth/login", "/api/auth/simple-login", "/api/auth/register", "/api/auth/verify**", "/api/auth/test")
                 .uri("http://auth-service:8081"))
             
             // Auth service routes (protected endpoints with JWT filter)  

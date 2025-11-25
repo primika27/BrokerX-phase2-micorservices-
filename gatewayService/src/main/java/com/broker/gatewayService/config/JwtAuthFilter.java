@@ -1,5 +1,6 @@
 package com.broker.gatewayService.config;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -15,8 +16,9 @@ import reactor.core.publisher.Mono;
 @Component
 public class JwtAuthFilter implements GatewayFilter {
 
-    private static final List<String> PUBLIC_PREFIXES = List.of(
-        "/api/auth/login",   
+    private static final List<String> PUBLIC_PATHS = Arrays.asList(
+        "/api/auth/login",
+        "/api/auth/simple-login",         // Login without MFA for testing
         "/api/auth/verify",
         "/api/auth/verify-otp",
         "/api/auth/register",
@@ -33,7 +35,7 @@ public class JwtAuthFilter implements GatewayFilter {
     }
 
     private boolean isPublicPath(String path) {
-        for (String p : PUBLIC_PREFIXES) {
+        for (String p : PUBLIC_PATHS) {
             if (path.startsWith(p)) return true;
         }
         return false;

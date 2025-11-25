@@ -12,9 +12,7 @@ COPY .mvn .mvn
 # Rendre le script mvnw exécutable, télécharger les dépendances et installer curl
 RUN chmod +x ./mvnw && \
     ./mvnw dependency:go-offline -B && \
-    apt-get update && \
-    apt-get install -y curl && \
-    rm -rf /var/lib/apt/lists/*
+    apk add --no-cache curl
 
 # Copier le code source
 COPY src ./src

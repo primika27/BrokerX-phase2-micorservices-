@@ -23,38 +23,45 @@ const BASE_URL = 'http://localhost:8080';
 // SYSTÈME D'AUTHENTIFICATION JWT
 // ============================================================================
 let authToken = null;
+
+// Utilisateur réel déjà vérifié dans le système
 const TEST_USER = {
-    username: 'loadtest',
-    email: 'loadtest@brokerx.com',
-    password: 'LoadTest2024!'
+    email: 'kprimika@gmail.com',
+    password: '123456'
 };
 
 function createTestUser() {
-    const payload = JSON.stringify(TEST_USER);
-    
-    const response = http.post(`${BASE_URL}/api/auth/register`, payload, {
-        headers: { 'Content-Type': 'application/json' }
-    });
-    
-    console.log(`User creation: ${response.status}`);
-    return response.status;
+    // Skip - on utilise un utilisateur existant déjà vérifié
+    console.log('ℹ️ Using existing verified user');
+    return 200;
 }
 
 function authenticate() {
     const payload = JSON.stringify({
-        username: TEST_USER.username,
+        email: TEST_USER.email,
         password: TEST_USER.password
     });
     
-    const response = http.post(`${BASE_URL}/api/auth/login`, payload, {
+    // Utiliser simple-login qui bypass le MFA pour les tests
+    const response = http.post(`${BASE_URL}/api/auth/simple-login`, payload, {
         headers: { 'Content-Type': 'application/json' }
     });
     
+    console.log(`Login attempt: ${response.status}`);
+    
     if (response.status === 200) {
         const body = JSON.parse(response.body);
-        authToken = body.token;
-        console.log(`✅ Authentication successful - Token: ${authToken ? authToken.substring(0, 20) + '...' : 'null'}`);
-        return true;
+        
+        // Chercher le token
+        authToken = body.token || body.accessToken || body.jwt;
+        
+        if (authToken) {
+            console.log(`✅ Authentication successful - Token: ${authToken.substring(0, 20)}...`);
+            return true;
+        } else {
+            console.log(`❌ No token in response: ${JSON.stringify(body)}`);
+            return false;
+        }
     } else {
         console.log(`❌ Authentication failed: ${response.status} - ${response.body}`);
         return false;
@@ -284,6 +291,11 @@ export function setup() {
 // MAIN TEST FUNCTION
 // ============================================================================
 export default function(data) {
+    // Utiliser le token du setup
+    if (data && data.authToken) {
+        authToken = data.authToken;
+    }
+    
     const endpoint = selectEndpoint();
     
     // Construire l'URL

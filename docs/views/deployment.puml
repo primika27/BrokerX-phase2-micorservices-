@@ -1,94 +1,118 @@
-@startuml deployment_refined
+@startuml deployment
 !theme plain
 skinparam componentStyle rectangle
-skinparam linetype ortho
-skinparam nodesep 40
-skinparam ranksep 40
 
-title "BrokerX - Deployment Diagram"
+title BrokerX - Deployment Diagram (with Prometheus Scraping)
 
-actor "Client\n(Browser)" as user
+actor "Client Browser" as user
 
-node "Host Server (Linux/Cloud VM)" as host {
-
-    node "Docker Engine" {
+node "Docker Host" {
     
-        node "frontend-container" <<Docker>> {
-            artifact "react-app-dist" as react
-            note right: Port 3000
-        }
-
-        node "gateway-container" <<Docker>> {
-            artifact "brokerx-gateway.jar" as gw_jar
-            note right: Port 8080
-        }
-
-        package "Backend Containers" {
-            node "auth-service" <<Docker>> {
-                artifact "brokerx-auth.jar" as auth_jar
-            }
-            
-            node "order-service" <<Docker>> {
-                artifact "brokerx-order.jar" as order_jar
-            }
-            
-            node "wallet-service" <<Docker>> {
-                artifact "brokerx-wallet.jar" as wallet_jar
-            }
-            
-            node "matching-service" <<Docker>> {
-                artifact "brokerx-matching.jar" as match_jar
-            }
-            
-            node "market-data-service" <<Docker>> {
-                artifact "brokerx-market.jar" as market_jar
-            }
-        }
-
-        node "rabbitmq-container" <<Docker>> {
-            component "RabbitMQ Broker" as mq
-            note right: Port 5672\nMgmt: 15672
-        }
+    node "frontend" <<container>> {
+        artifact "React App" as react
+        note right: :5173
     }
 
-    folder "Host Volumes (Persistence)" as volumes {
-        file "/var/lib/brokerx/auth/h2.db" as vol_auth
-        file "/var/lib/brokerx/wallet/h2.db" as vol_wallet
-        file "/var/lib/brokerx/order/h2.db" as vol_order
-        file "/var/lib/brokerx/matching/h2.db" as vol_match
+    ' On utilise l'alias gateway_node pour éviter le conflit d'ID
+    node "gateway" as gateway_node <<container>> {
+        artifact "Gateway JAR" as gateway
+        file "nginx.conf"
+        note right: :8080
     }
+    
+    package "Microservices" {
+        node "auth-service" <<container>> {
+            artifact "Auth JAR" as auth
+            note right: :8081
+        }
+        
+        node "client-service" <<container>> {
+            artifact "Client JAR" as client
+            note right: :8082
+        }
+        
+        node "wallet-service" <<container>> {
+            artifact "Wallet JAR" as wallet
+            note right: :8083
+        }
+        
+        node "order-service" <<container>> {
+            artifact "Order JAR" as order
+            note right: :8084
+        }
+        
+        node "matching-service" <<container>> {
+            artifact "Matching JAR" as matching
+            note right: :8085
+        }
+        
+        node "market-data-service" <<container>> {
+            artifact "Market JAR" as market
+            note right: :8086
+        }
+    }
+    
+    node "rabbitmq" <<container>> {
+        component "RabbitMQ" as rabbit
+        note right: :5672
+    }
+    
+    package "Monitoring" {
+        node "prometheus" <<container>> {
+            component "Prometheus" as prom
+            note right: :9090
+        }
+        
+        node "grafana" <<container>> {
+            component "Grafana" as graf
+            note right: :3000
+        }
+        
+        node "swagger-ui" <<container>> {
+            component "Swagger UI" as swagger
+            note right: :8089
+        }
+    }
+    
+    database "auth-data" as db1
+    database "wallet-data" as db2
+    database "order-data" as db3
+    database "matching-data" as db4
 }
 
-' --- Flux Réseau ---
+' --- Flux Utilisateur (User Traffic) ---
+user --> react
+react --> gateway : HTTP (8080)
 
-' Entrée externe
-user --> react : HTTPS
-react --> gw_jar : REST / WSS
+gateway --> auth
+gateway --> client
+gateway --> wallet
+gateway --> order
+gateway --> matching
+gateway --> market
 
-' Routage Gateway vers les JARs
-gw_jar --> auth_jar : :8081
-gw_jar --> wallet_jar : :8083
-gw_jar --> order_jar : :8084
-gw_jar --> match_jar : :8085
-gw_jar --> market_jar : :8086
+' --- Flux Inter-Services (Async) ---
+order ..> gateway
+order <--> rabbit
+matching <--> rabbit
 
-' Communication Inter-Services (Via Gateway comme indiqué dans votre design)
-order_jar ..> gw_jar : Feign Calls
+' --- Flux Bases de Données ---
+auth --> db1
+wallet --> db2
+order --> db3
+matching --> db4
 
-' Messaging Asynchrone
-order_jar <--> mq : AMQP (Orders)
-match_jar <--> mq : AMQP (Trades)
+' --- Flux Monitoring (Prometheus Scraping) ---
+' Prometheus tire (pull) les métriques depuis les endpoints Actuator
+prom .[#blue].> gateway : /actuator/prometheus
+prom .[#blue].> auth : /actuator/prometheus
+prom .[#blue].> client : /actuator/prometheus
+prom .[#blue].> wallet : /actuator/prometheus
+prom .[#blue].> order : /actuator/prometheus
+prom .[#blue].> matching : /actuator/prometheus
+prom .[#blue].> market : /actuator/prometheus
 
-' Persistance (Le JAR écrit sur le disque monté)
-auth_jar --> vol_auth : Mount /data
-wallet_jar --> vol_wallet : Mount /data
-order_jar --> vol_order : Mount /data
-match_jar --> vol_match : Mount /data
-
-note bottom of volumes
-  **Bind Mounts**
-  Assure la persistance des fichiers H2
-  même si les conteneurs redémarrent.
-end note
+' Grafana lit Prometheus
+graf -> prom : Query Data
 
 @enduml
