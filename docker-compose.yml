@@ -16,13 +16,32 @@ services:
       - NODE_ENV=production
 
 
+  # NGINX LOAD BALANCER (disabled - Gateway handles routing)
+  nginx-lb:
+    build:
+      context: ./nginx-lb
+      dockerfile: Dockerfile
+    # ports:
+    #   - "8080:8080"  # Disabled - Gateway is now the entry point
+    depends_on:
+      - gateway
+    networks:
+      - brokerx-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   # GATEWAY SERVICE
+
   gateway:
     build:
       context: ./gatewayService
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8080:8080"  # Direct entry point (bypassing NGINX)
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - SPRING_PROFILES_ACTIVE=docker
@@ -35,12 +54,12 @@ services:
       - market-data-service
     networks:
       - brokerx-network
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
-    #   start_period: 60s
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # AUTH SERVICE
 

@@ -14,6 +14,10 @@ build/
 **/target/
 **/build/
 
+# Testing results (too large files)
+testing/results/
+**/stress-test-results.json
+
 # IDE configs
 .idea/
 .vscode/

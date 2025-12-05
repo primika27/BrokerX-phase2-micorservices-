@@ -44,13 +44,21 @@ Client <-- UC08 : recevoir notifications
 System --> UC07 : traiter ordres automatiquement
 System --> UC08 : envoyer confirmations
 
-' Relations entre use cases
+' Relations entre use cases (dépendances)
 UC01 ..> UC02 : <<include>>
-UC02 ..> UC05 : <<extend>>
+
+' UC02 (Authentification) est REQUIS pour UC04, UC05, UC06
+UC04 ..> UC02 : <<include>>
+UC05 ..> UC02 : <<include>>
+UC06 ..> UC02 : <<include>>
+
+' UC03 nécessite aussi l'authentification
+UC03 ..> UC02 : <<include>>
+
+' Flux de traitement des ordres
 UC05 ..> UC07 : <<include>>
-UC07 ..> UC08 : <<include>>
 UC06 ..> UC07 : <<include>>
-UC04 ..> UC05 : <<extend>>
+UC07 ..> UC08 : <<include>>
 
 note top of UC01
 Inscription avec email,

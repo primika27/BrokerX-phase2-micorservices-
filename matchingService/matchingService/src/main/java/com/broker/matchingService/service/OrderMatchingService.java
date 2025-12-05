@@ -151,8 +151,8 @@ public class OrderMatchingService {
             ScheduledFuture<?> scheduledTrade = scheduler.schedule(() -> {
                 try {
                     // Check if orders are still PENDING before executing
-                    MatchingOrder currentOrder1 = matchingOrderRepository.findByOrderId(order1.getOrderId());
-                    MatchingOrder currentOrder2 = matchingOrderRepository.findByOrderId(order2.getOrderId());
+                    MatchingOrder currentOrder1 = matchingOrderRepository.findFirstByOrderIdOrderByTimestampDesc(order1.getOrderId());
+                    MatchingOrder currentOrder2 = matchingOrderRepository.findFirstByOrderIdOrderByTimestampDesc(order2.getOrderId());
                     
                     if (currentOrder1 == null || !"PENDING".equals(currentOrder1.getStatus())) {
                         System.out.println("Order " + order1.getOrderId() + " is no longer PENDING, cancelling trade");
@@ -232,7 +232,7 @@ public class OrderMatchingService {
     @Transactional
     public void cancelOrder(String orderId) {
         try {
-            MatchingOrder order = matchingOrderRepository.findByOrderId(orderId);
+            MatchingOrder order = matchingOrderRepository.findFirstByOrderIdOrderByTimestampDesc(orderId);
             if (order != null && "PENDING".equals(order.getStatus())) {
                 order.setStatus("CANCELLED");
                 matchingOrderRepository.save(order);
@@ -261,7 +261,7 @@ public class OrderMatchingService {
     @Transactional
     public void modifyOrder(OrderDto modifiedOrderDto) {
         try {
-            MatchingOrder existingOrder = matchingOrderRepository.findByOrderId(modifiedOrderDto.getOrderId());
+            MatchingOrder existingOrder = matchingOrderRepository.findFirstByOrderIdOrderByTimestampDesc(modifiedOrderDto.getOrderId());
             if (existingOrder != null && "PENDING".equals(existingOrder.getStatus())) {
                 // IMPORTANT: First cancel any existing scheduled trade for this order
                 ScheduledFuture<?> scheduledTrade = scheduledTrades.remove(existingOrder.getOrderId());

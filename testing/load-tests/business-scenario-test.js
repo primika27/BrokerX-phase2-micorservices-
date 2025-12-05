@@ -55,7 +55,7 @@ export function setup() {
   console.log(`Profils: Day Traders, Portfolio Managers, Swing Traders`);
   
   // Vérification système
-  const systemCheck = http.get(`${BASE_URL}:80/health`);
+  const systemCheck = http.get(`${BASE_URL}/actuator/health`);
   check(systemCheck, {
     'Plateforme BrokerX disponible': (r) => r.status === 200,
   });
@@ -74,15 +74,11 @@ export default function(data) {
 
   // === SCÉNARIO MÉTIER 1: Authentification Trader (25% des actions) ===
   if (Math.random() < 0.25) {
-    console.log(`🔐 Connexion trader: ${trader.email}`);
+    console.log(` Connexion trader: ${trader.email}`);
     const loginStart = Date.now();
     
-    // Test authentification via load balancer ET directement
-    const authEndpoint = Math.random() > 0.5 ? 
-      `${BASE_URL}:80/api/auth/login` :  // Via NGINX
-      `${BASE_URL}:8${Math.random() > 0.5 ? '101' : '102'}/actuator/health`; // Direct auth service
-    
-    const loginRes = http.get(authEndpoint);
+    // Test authentification simple
+    const loginRes = http.get(`${API_URL}/auth/simple-login`);
     
     const loginSuccess = check(loginRes, {
       'Authentification trader réussie': (r) => r.status === 200,
@@ -100,9 +96,8 @@ export default function(data) {
     console.log(`📊 Consultation portefeuille - ${instrument.symbol}`);
     const portfolioStart = Date.now();
     
-    // Alternance entre gateways pour load balancing
-    const gatewayPort = Math.random() > 0.5 ? 8080 : 8081;
-    const portfolioRes = http.get(`${BASE_URL}:${gatewayPort}/actuator/health`);
+    // Health check pour simuler consultation portefeuille
+    const portfolioRes = http.get(`${BASE_URL}/actuator/health`);
     
     const portfolioSuccess = check(portfolioRes, {
       'Données portefeuille disponibles': (r) => r.status === 200,
@@ -118,17 +113,16 @@ export default function(data) {
 
   // === SCÉNARIO MÉTIER 3: Placement Ordre (25% des actions) ===
   else if (Math.random() < 0.86) { // 25% des 35% restants
-    console.log(`💰 Placement ordre: ${orderType} ${quantity} ${instrument.symbol}`);
+    console.log(`Placement ordre: ${orderType} ${quantity} ${instrument.symbol}`);
     const orderStart = Date.now();
     
-    // Simulation placement d'ordre via différents services
-    const servicePort = [8080, 8081, 8301, 8302][Math.floor(Math.random() * 4)]; // Gateway + Wallet
-    const orderRes = http.get(`${BASE_URL}:${servicePort}/actuator/prometheus`);
+    // Simulation placement d'ordre via client service test endpoint
+    const orderRes = http.get(`${API_URL}/clients/test`);
     
     const orderSuccess = check(orderRes, {
       'Ordre accepté par le système': (r) => r.status === 200,
       'Confirmation ordre rapide': (r) => r.timings.duration < 800,
-      'Metrics ordre disponibles': (r) => r.body && r.body.length > 100,
+      'Metrics ordre disponibles': (r) => r.body && r.body.length > 0,
     });
     
     if (orderSuccess) {
@@ -140,15 +134,14 @@ export default function(data) {
 
   // === SCÉNARIO MÉTIER 4: Modification/Annulation Ordre (10% des actions) ===
   else {
-    console.log(`✏️ Modification ordre existant`);
+    console.log(`Modification ordre existant`);
     const updateStart = Date.now();
     
-    // Test service ordres pour modification
-    const orderServicePort = Math.random() > 0.5 ? 8401 : 8402; // Order service instances
-    const updateRes = http.get(`${BASE_URL}:${orderServicePort}/actuator/health`);
+    // Test auth service pour simuler modification
+    const updateRes = http.get(`${API_URL}/auth/test`);
     
     const updateSuccess = check(updateRes, {
-      'Modification ordre traitée': (r) => r.status === 200 || r.status === 404,
+      'Modification ordre traitée': (r) => r.status === 200,
       'Update très rapide': (r) => r.timings.duration < 200,
     });
     

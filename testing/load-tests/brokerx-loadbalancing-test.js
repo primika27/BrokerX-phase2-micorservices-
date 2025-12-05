@@ -110,24 +110,24 @@ const TEST_TAGS = {
 };
 
 // ============================================================================
-// ENDPOINTS STRATÉGIQUES BASÉS SUR L'ARCHITECTURE RÉELLE
+// ENDPOINTS PUBLICS UNIQUEMENT - SANS AUTHENTIFICATION
 // ============================================================================
 const criticalEndpoints = [
-    // === ENDPOINTS PUBLICS (pas d'auth) - Pour baseline load balancing ===
+    // === ENDPOINTS PUBLICS DE TEST ===
     {
-        path: '/health',
+        path: '/actuator/health',
         method: 'GET',
-        weight: 5,
+        weight: 15,
         requiresAuth: false,
         cacheable: false,
         category: 'health',
         description: 'Health Check',
-        expectedStatus: [200]
+        expectedStatus: [200, 404]
     },
     {
         path: '/api/auth/test',
         method: 'GET',
-        weight: 10,
+        weight: 20,
         requiresAuth: false,
         cacheable: false,
         category: 'service_test',
@@ -137,7 +137,7 @@ const criticalEndpoints = [
     {
         path: '/api/clients/test',
         method: 'GET',
-        weight: 10,
+        weight: 20,
         requiresAuth: false,
         cacheable: false,
         category: 'service_test',
@@ -145,82 +145,68 @@ const criticalEndpoints = [
         expectedStatus: [200, 500]
     },
     
-    // === ENDPOINTS DB QUERIES (avec auth, coûteux, CACHABLES) ===
+    // === ENDPOINTS D'AUTHENTIFICATION PUBLICS ===
     {
-        path: '/api/clients/getByEmail',
-        method: 'GET',
-        weight: 25,
-        requiresAuth: true,
-        cacheable: true,
-        category: 'db_query',
-        description: 'Client Lookup by Email (DB query)',
-        expectedStatus: [200, 400, 404, 500],
-        params: () => {
-            const emails = [
-                'user1@test.com', 'user2@test.com', 'user3@test.com',
-                'admin@brokerx.com', 'test@example.com', 'trader@brokerx.com',
-                'investor1@brokerx.com', 'investor2@brokerx.com', 'nonexistent@test.com'
-            ];
-            return { email: emails[Math.floor(Math.random() * emails.length)] };
-        }
-    },
-    {
-        path: '/api/clients/getEmailById',
-        method: 'GET',
-        weight: 25,
-        requiresAuth: true,
-        cacheable: true,
-        category: 'db_query',
-        description: 'Email Lookup by ClientID (DB query)',
-        expectedStatus: [200, 404, 500],
-        params: () => {
-            // Simuler différents clients, incluant des IDs qui n'existent pas
-            return { clientId: Math.floor(Math.random() * 50) + 1 };
-        }
-    },
-    
-    // === ENDPOINTS PUBLICS SUPPLÉMENTAIRES (sans auth pour baseline) ===
-    {
-        path: '/api/wallet/test',
-        method: 'GET',
-        weight: 15,
-        requiresAuth: true,
-        cacheable: false,
-        category: 'service_test',
-        description: 'Wallet Service Test',
-        expectedStatus: [200, 500]
-    },
-    
-    // === ENDPOINTS AVEC PARAMÈTRES (publics) ===
-    {
-        path: '/api/wallet/balance',
-        method: 'GET',
+        path: '/api/auth/register',
+        method: 'POST',
         weight: 10,
         requiresAuth: false,
-        cacheable: true,
-        category: 'db_query',
-        description: 'Wallet Balance Query (expensive calculation)',
-        expectedStatus: [200, 400, 404, 500],
-        params: () => {
-            // Tester avec différents emails (certains valides, d'autres non)
-            const emails = ['user1@test.com', 'user2@test.com', 'trader@brokerx.com', 'nonexistent@test.com'];
-            return { ownerEmail: emails[Math.floor(Math.random() * emails.length)] };
-        }
+        cacheable: false,
+        category: 'auth_public',
+        description: 'Auth Register',
+        expectedStatus: [200, 201, 400, 409],
+        body: () => ({
+            email: `test${Math.random().toString(36).substr(2, 9)}@example.com`,
+            password: 'TestPassword123',
+            firstName: 'Load',
+            lastName: 'Test'
+        })
     },
     {
-        path: '/api/orders/holdings',
-        method: 'GET',
-        weight: 5,
+        path: '/api/auth/login',
+        method: 'POST',
+        weight: 15,
         requiresAuth: false,
-        cacheable: true,
-        category: 'db_query',
-        description: 'Order Holdings Query (complex query)',
-        expectedStatus: [200, 400, 401, 404, 500],
-        params: () => {
-            // Tester avec différents emails
-            const emails = ['user1@test.com', 'trader@brokerx.com', 'investor@test.com'];
-            return { ownerEmail: emails[Math.floor(Math.random() * emails.length)] };
-        }
+        cacheable: false,
+        category: 'auth_public',
+        description: 'Auth Login',
+        expectedStatus: [200, 401, 404],
+        body: () => ({
+            email: 'kprimika@gmail.com',
+            password: '123456'
+        })
+    },
+    {
+        path: '/api/auth/simple-login',
+        method: 'POST',
+        weight: 10,
+        requiresAuth: false,
+        cacheable: false,
+        category: 'auth_public',
+        description: 'Auth Simple Login',
+        expectedStatus: [200, 401, 404],
+        body: () => ({
+            email: 'kprimika@gmail.com',
+            password: '123456'
+        })
+    },
+    
+    // === ENDPOINTS CLIENT PUBLICS ===
+    {
+        path: '/api/clients/register',
+        method: 'POST',
+        weight: 10,
+        requiresAuth: false,
+        cacheable: false,
+        category: 'client_public',
+        description: 'Client Register',
+        expectedStatus: [200, 201, 400, 409],
+        body: () => ({
+            email: `client${Math.random().toString(36).substr(2, 9)}@example.com`,
+            firstName: 'Client',
+            lastName: 'Test',
+            phone: '1234567890'
+        })
     }
 ];
 
@@ -310,33 +296,47 @@ export default function(data) {
         url += `?${queryString}`;
     }
 
-    // Headers avec authentification
+    // Headers
     let headers = {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'User-Agent': 'k6-brokerx-loadtest',
         'X-Test-ID': `lb-${INSTANCE_COUNT}instances`,
         'X-Endpoint-Category': endpoint.category
     };
-
-    // Ajouter token d'authentification si requis
-    if (endpoint.requiresAuth && data && data.authToken) {
-        headers['Authorization'] = `Bearer ${data.authToken}`;
-    }
     
-    // Faire la requête
+    // Faire la requête (GET ou POST)
     const startTime = Date.now();
-    const response = http.get(url, {
-        headers: headers,
-        timeout: '10s',
-        tags: {
-            endpoint: endpoint.path,
-            category: endpoint.category,
-            cacheable: endpoint.cacheable.toString(),
-            instance_count: INSTANCE_COUNT,
-            test_type: 'load_balancing',
-            service: endpoint.path.split('/')[2] || 'unknown'  // Extract service name
-        }
-    });
+    let response;
+    
+    if (endpoint.method === 'POST' && endpoint.body) {
+        const bodyData = endpoint.body();
+        response = http.post(url, JSON.stringify(bodyData), {
+            headers: headers,
+            timeout: '10s',
+            tags: {
+                endpoint: endpoint.path,
+                category: endpoint.category,
+                method: endpoint.method,
+                instance_count: INSTANCE_COUNT,
+                test_type: 'load_balancing_public_only',
+                service: endpoint.path.split('/')[2] || 'unknown'
+            }
+        });
+    } else {
+        response = http.get(url, {
+            headers: headers,
+            timeout: '10s',
+            tags: {
+                endpoint: endpoint.path,
+                category: endpoint.category,
+                method: endpoint.method,
+                instance_count: INSTANCE_COUNT,
+                test_type: 'load_balancing_public_only',
+                service: endpoint.path.split('/')[2] || 'unknown'
+            }
+        });
+    }
     const duration = Date.now() - startTime;
     
     // Métriques personnalisées avec tags pour Grafana

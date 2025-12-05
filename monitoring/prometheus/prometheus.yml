@@ -28,10 +28,15 @@ scrape_configs:
     scrape_interval: 15s
     metrics_path: '/metrics'
 
-  # BrokerX Microservices - Services réels
+  # BrokerX Gateway - Support 1-4 instances avec --scale
   - job_name: 'brokerx-gateway'
     static_configs:
-      - targets: ['host.docker.internal:8080']
+      - targets: 
+        - 'host.docker.internal:8080'  # NGINX Load Balancer
+        # Instances directes (pour debug) - ajoutez selon besoin:
+        # - 'brokerx-phase2micorservices-gateway-1:8080'  
+        # - 'brokerx-phase2micorservices-gateway-2:8080'
+        # - 'brokerx-phase2micorservices-gateway-3:8080'
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     scrape_timeout: 10s

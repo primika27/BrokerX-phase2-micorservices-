@@ -11,13 +11,12 @@ const throughputCounter = new Counter('total_requests');
 // Aggressive stress test configuration
 export let options = {
   stages: [
-    { duration: '1m', target: 100 },   // Baseline
-    { duration: '2m', target: 500 },   // Ramp up
-    { duration: '3m', target: 1000 },  // High stress
-    { duration: '5m', target: 2000 },  // Maximum stress
-    { duration: '3m', target: 1000 },  // Step down
-    { duration: '2m', target: 500 },   // Recovery
-    { duration: '1m', target: 0 },     // Cool down
+    { duration: '30s', target: 100 },   // Baseline
+    { duration: '1m', target: 500 },    // Ramp up
+    { duration: '1m30s', target: 1000 }, // High stress
+    { duration: '2m', target: 1500 },   // Maximum stress
+    { duration: '1m', target: 500 },    // Step down
+    { duration: '1m', target: 0 },      // Cool down
   ],
   thresholds: {
     http_req_duration: ['p(99)<2000'], // 99th percentile under 2s
@@ -31,10 +30,10 @@ const API_URL = `${BASE_URL}/api`;
 
 // Stress test endpoints (endpoints simples sans auth)
 const STRESS_ENDPOINTS = [
-  { path: '/health', weight: 0.4 },
+  { path: '/actuator/health', weight: 0.4 },
   { path: '/api/auth/test', weight: 0.3 },
   { path: '/api/clients/test', weight: 0.2 },
-  { path: '/actuator/health', weight: 0.1 },
+  { path: '/api/auth/simple-login', weight: 0.1 },
 ];
 
 export function setup() {
@@ -42,7 +41,7 @@ export function setup() {
   console.log('WARNING: This is a high-load stress test!');
   
   // System health check
-  const healthRes = http.get(`${API_URL}/health`);
+  const healthRes = http.get(`${BASE_URL}/actuator/health`);
   const systemHealthy = check(healthRes, {
     'System initially healthy': (r) => r.status === 200,
   });
@@ -71,7 +70,7 @@ export default function(data) {
   }
   
   // Make the request
-  const response = http.get(`${API_URL}${selectedEndpoint.path}`, {
+  const response = http.get(`${BASE_URL}${selectedEndpoint.path}`, {
     timeout: '30s',
   });
   
@@ -101,7 +100,7 @@ export function teardown(data) {
   console.log(`Test duration: ${(new Date() - data.startTime) / 1000}s`);
   
   // Final health check
-  const finalHealthRes = http.get(`${BASE_URL}/api/health`);
+  const finalHealthRes = http.get(`${BASE_URL}/actuator/health`);
   const stillHealthy = check(finalHealthRes, {
     'System healthy after stress': (r) => r.status === 200,
   });

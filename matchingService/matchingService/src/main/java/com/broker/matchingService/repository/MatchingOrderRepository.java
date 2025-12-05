@@ -10,5 +10,5 @@ import java.util.List;
 public interface MatchingOrderRepository extends JpaRepository<MatchingOrder, Long> {
     List<MatchingOrder> findByStockSymbolAndOrderTypeAndStatusOrderByPriceAscTimestampAsc(String stockSymbol, String orderType, String status);
     List<MatchingOrder> findByStockSymbolAndOrderTypeAndStatusOrderByPriceDescTimestampAsc(String stockSymbol, String orderType, String status);
-    MatchingOrder findByOrderId(String orderId);
+    MatchingOrder findFirstByOrderIdOrderByTimestampDesc(String orderId);
 }

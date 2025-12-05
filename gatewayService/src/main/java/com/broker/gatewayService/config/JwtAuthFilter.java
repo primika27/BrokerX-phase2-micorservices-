@@ -25,6 +25,7 @@ public class JwtAuthFilter implements GatewayFilter {
         "/api/auth/test",                 // test endpoint
         "/api/clients/register",
         "/api/clients/test",              // client test endpoint
+        "/api/wallet/test",               // wallet test endpoint
         "/actuator/health"                // optional health endpoint
     );
     
@@ -44,6 +45,7 @@ public class JwtAuthFilter implements GatewayFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
+        System.out.println("JWT Filter processing path: " + path);
 
         var request = exchange.getRequest();
          
@@ -72,7 +74,9 @@ public class JwtAuthFilter implements GatewayFilter {
         }
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        System.out.println("Authorization header: " + authHeader);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("Missing or invalid Authorization header for path: " + path);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
