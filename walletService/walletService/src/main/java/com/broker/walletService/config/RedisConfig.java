@@ -23,7 +23,7 @@ package com.broker.walletService.config;
 //  * - /api/wallet/balance (2118-2216 requêtes - calculs complexes)
 //  */
 // @Configuration
-// // @EnableCaching  // Disabled for submission
+// // @EnableCaching  
 // public class RedisConfig {
 
 //     @Bean
