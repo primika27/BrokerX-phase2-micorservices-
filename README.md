@@ -2,14 +2,57 @@
 
 ## Overview
 
-BrokerX is designed using a **microservices architecture**, where each major business capability is implemented as an independent service. This approach improves modularity, scalability, and maintainability by allowing services to be developed, deployed, and updated independently.
+BrokerX is a stock trading platform built using a **microservices architecture**. Each microservice is responsible for a specific business domain and can be developed, deployed, and scaled independently. Communication between the frontend and backend is handled through an API Gateway, which routes requests to the appropriate service.
 
-The system consists of the following main components:
+## Architecture
 
-* **React Frontend** – Provides the user interface and communicates with the backend through REST APIs.
-* **API Gateway** – Serves as the single entry point for client requests and routes them to the appropriate microservice.
-* **Microservices** – Each service is responsible for a specific business domain, such as authentication, portfolio management, or trading.
-* **Databases** – Each microservice manages its own database, ensuring loose coupling and independent data ownership.
+```
+                           +----------------------+
+                           |    React Frontend    |
+                           +----------+-----------+
+                                      |
+                                      v
+                           +----------------------+
+                           |     API Gateway      |
+                           +----------+-----------+
+                                      |
+      -----------------------------------------------------------------
+      |            |             |             |             |          |
+      v            v             v             v             v          v
++------------+ +------------+ +------------+ +------------+ +------------+ +----------------+
+|Auth Service| |Client      | |Wallet      | |Order       | |Matching    | |Notification    |
+|            | |Service     | |Service     | |Service     | |Service     | |Service         |
++------+-----+ +------+-----+ +------+-----+ +------+-----+ +------+-----+ +--------+-------+
+       |              |              |              |              |                 |
+       v              v              v              v              v                 v
+  Auth DB       Client DB      Wallet DB      Order DB     Matching DB     Notification DB
+```
+
+## Microservices
+
+### Authentication Service
+
+Responsible for user authentication and authorization. It manages login, registration, JWT authentication, email verification, and multi-factor authentication (MFA).
+
+### Client Service
+
+Manages client information and user profiles. It stores customer-related data and exposes APIs used throughout the platform.
+
+### Wallet Service
+
+Maintains users' wallets and balances. It handles deposits, withdrawals, and updates account balances after completed trades.
+
+### Order Service
+
+Receives buy and sell orders submitted by clients. It validates orders, records them, and forwards eligible orders to the Matching Service.
+
+### Matching Service
+
+Implements the order matching engine. It continuously compares buy and sell orders, executes trades when matching conditions are met, and notifies the appropriate services of completed transactions.
+
+### Notification Service
+
+Sends notifications to users, such as account verification emails, transaction confirmations, and other platform events.
 
 ## Technology Stack
 
@@ -17,7 +60,7 @@ The system consists of the following main components:
 
 * React
 * TypeScript
-* Nginx (for serving the production build)
+* Nginx
 
 ### Backend
 
@@ -29,44 +72,22 @@ The system consists of the following main components:
 
 ### Database
 
-* Relational database managed independently by each microservice.
-
-## Architecture Diagram
-
-```
-                +------------------+
-                |   React Client   |
-                +---------+--------+
-                          |
-                          v
-                 +------------------+
-                 |   API Gateway    |
-                 +---------+--------+
-                           |
-        -----------------------------------------
-        |                 |                     |
-        v                 v                     v
-+---------------+ +---------------+ +----------------+
-| Auth Service  | | Trading       | | Portfolio      |
-|               | | Service       | | Service        |
-+-------+-------+ +-------+-------+ +--------+-------+
-        |                 |                  |
-        v                 v                  v
-   Auth Database    Trading Database   Portfolio Database
-```
+Each microservice owns its own relational database, following the database-per-service pattern. This ensures loose coupling and allows services to evolve independently.
 
 ## Design Principles
 
-* **Separation of concerns:** Each microservice is responsible for a single business domain.
-* **Loose coupling:** Services communicate through REST APIs and remain independent.
-* **Scalability:** Individual services can be scaled without affecting the rest of the system.
-* **Maintainability:** Features and bug fixes can be implemented within a single service with minimal impact on others.
-* **Independent deployment:** Each microservice can be updated and deployed separately.
+* **Microservices Architecture:** Each service has a single, well-defined responsibility.
+* **Database per Service:** Every microservice manages its own data without direct access to another service's database.
+* **Loose Coupling:** Services communicate through REST APIs, reducing dependencies between components.
+* **Scalability:** Individual services can be scaled according to demand.
+* **Maintainability:** Changes to one service have minimal impact on the rest of the system.
+* **Independent Deployment:** Services can be updated and deployed independently.
 
-## Benefits
+## Request Flow
 
-* Easier maintenance and testing
-* Better fault isolation
-* Improved scalability
-* Clear separation between frontend and backend
-* Flexibility to extend the platform by adding new services in the future
+1. A user interacts with the React frontend.
+2. Requests are sent to the API Gateway.
+3. The gateway forwards the request to the appropriate microservice.
+4. Each microservice performs its business logic and accesses only its own database.
+5. When necessary, services communicate with one another through APIs.
+6. Responses are returned through the API Gateway back to the frontend.
